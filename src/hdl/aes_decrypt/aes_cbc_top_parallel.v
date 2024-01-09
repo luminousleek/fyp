@@ -361,6 +361,7 @@ module aes_cbc_top_parallel
           if (iv_word_reg == 2'd3) begin // have full iv
             iv_word_next = 2'b0;
             ct_word_next = 2'b0;
+            s_axis_ct_tready_next = 1'b0;
             state_next = STATE_WAIT_KE;
           end else begin
             state_next = STATE_READ_IV;
@@ -377,6 +378,7 @@ module aes_cbc_top_parallel
           if (read_data_0[STATUS_READY_BIT]) begin // key expansion done
             ct_word_next = 2'b0;
             write_wait_cycle_next = 2'b0;
+            s_axis_ct_tready_next = 1'b1;
             state_next = STATE_READ_CIPHERTEXT;
           end else begin
             state_next = STATE_WAIT_KE;
@@ -604,6 +606,7 @@ module aes_cbc_top_parallel
               s_axis_ct_tready_next = 1'b1;
               state_next = STATE_READ_CIPHERTEXT;
             end else begin
+              wait_next = 7'd0;
               state_next = STATE_WAIT_DECRYPT;
             end
           end
@@ -674,7 +677,7 @@ module aes_cbc_top_parallel
       ct_reg[119 - 32 * ct_word_reg -: 8] <= s_axis_ct_tdata[15:8];
       ct_reg[111 - 32 * ct_word_reg -: 8] <= s_axis_ct_tdata[23:16];
       ct_reg[103 - 32 * ct_word_reg -: 8] <= s_axis_ct_tdata[31:24];
-      case (load_mux_reg)
+      case (load_mux_reg) // current ct is next block's iv
         2'd0: begin
           iv_reg_1[127 - 32 * ct_word_reg -: 8] <= s_axis_ct_tdata[7:0];
           iv_reg_1[119 - 32 * ct_word_reg -: 8] <= s_axis_ct_tdata[15:8];
