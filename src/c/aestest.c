@@ -58,8 +58,8 @@
 #define ENABLE_ALL_IRQ              0x00007000
 
 #define KEY_LENGTH                  16
-#define CT_LENGTH                   80
-#define DST_LENGTH                  65
+#define CT_LENGTH                   272
+#define DST_LENGTH                  257
 
 #define CT_DMA_PHY_ADDR             0x40400000
 #define KEY_DMA_PHY_ADDR            0x40410000
@@ -287,30 +287,117 @@ int main()
 	// ct packet
   // iv: 02 2c b3 0d ad 12 19 df 1d c9 ca 9d 63 a9 8c f2
   // plaintext: have yourself a merry little Christmas let your heart be light
-	virtual_src_ct_addr[0]= 0x0DB32C02;
-	virtual_src_ct_addr[1]= 0xDF1912AD;
-	virtual_src_ct_addr[2]= 0x9DCAC91D;
-	virtual_src_ct_addr[3]= 0xF28CA963;
+	// virtual_src_ct_addr[0]= 0x0DB32C02;
+	// virtual_src_ct_addr[1]= 0xDF1912AD;
+	// virtual_src_ct_addr[2]= 0x9DCAC91D;
+	// virtual_src_ct_addr[3]= 0xF28CA963;
 
-	virtual_src_ct_addr[4]= 0x63D49459;
-	virtual_src_ct_addr[5]= 0x06EDD8A4;
-	virtual_src_ct_addr[6]= 0xF514DF25;
-	virtual_src_ct_addr[7]= 0x8FF53E19;
+	// virtual_src_ct_addr[4]= 0x63D49459;
+	// virtual_src_ct_addr[5]= 0x06EDD8A4;
+	// virtual_src_ct_addr[6]= 0xF514DF25;
+	// virtual_src_ct_addr[7]= 0x8FF53E19;
 
-	virtual_src_ct_addr[8]= 0x073277E8;
-	virtual_src_ct_addr[9]= 0xE0127793;
-	virtual_src_ct_addr[10]= 0x405606E3;
-	virtual_src_ct_addr[11]= 0xC667F0C4;
+	// virtual_src_ct_addr[8]= 0x073277E8;
+	// virtual_src_ct_addr[9]= 0xE0127793;
+	// virtual_src_ct_addr[10]= 0x405606E3;
+	// virtual_src_ct_addr[11]= 0xC667F0C4;
 
-	virtual_src_ct_addr[12]= 0x7709F875;
-	virtual_src_ct_addr[13]= 0xB0F8F991;
-	virtual_src_ct_addr[14]= 0xB7B3BBB4;
-	virtual_src_ct_addr[15]= 0xA5902BB8;
+	// virtual_src_ct_addr[12]= 0x7709F875;
+	// virtual_src_ct_addr[13]= 0xB0F8F991;
+	// virtual_src_ct_addr[14]= 0xB7B3BBB4;
+	// virtual_src_ct_addr[15]= 0xA5902BB8;
 
-	virtual_src_ct_addr[16]= 0xDA6FE762;
-  virtual_src_ct_addr[17]= 0x27308C93;
-  virtual_src_ct_addr[18]= 0x81BA4A09;
-  virtual_src_ct_addr[19]= 0x5EE854E8;
+	// virtual_src_ct_addr[16]= 0xDA6FE762;
+  // virtual_src_ct_addr[17]= 0x27308C93;
+  // virtual_src_ct_addr[18]= 0x81BA4A09;
+  // virtual_src_ct_addr[19]= 0x5EE854E8;
+
+  // iv: 02 2c b3 0d ad 12 19 df 1d c9 ca 9d 63 a9 8c f2
+  // plaintext: For God so loved the world, that he gave his only Son, that whoever believes in him should not perish but have eternal life. For God did not send his Son into the world to condemn the world, but in order that the world might be saved through him.
+  virtual_src_ct_addr[0] = 0x0DB32C02;
+  virtual_src_ct_addr[1] = 0xDF1912AD;
+  virtual_src_ct_addr[2] = 0x9DCAC91D;
+  virtual_src_ct_addr[3] = 0xF28CA963;
+
+  virtual_src_ct_addr[4] = 0x5E6C2661;
+  virtual_src_ct_addr[5] = 0x8FAD790B;
+  virtual_src_ct_addr[6] = 0x43ACD619;
+  virtual_src_ct_addr[7] = 0x2A6ABA29;
+
+  virtual_src_ct_addr[8] = 0x97F30029;
+  virtual_src_ct_addr[9] = 0xA3792403;
+  virtual_src_ct_addr[10] = 0x745151C4;
+  virtual_src_ct_addr[11] = 0xAC5BCE69;
+
+  virtual_src_ct_addr[12] = 0x7820C01D;
+  virtual_src_ct_addr[13] = 0xBDF96184;
+  virtual_src_ct_addr[14] = 0x9B820911;
+  virtual_src_ct_addr[15] = 0x11FF21EB;
+
+  virtual_src_ct_addr[16] = 0x27B1C347;
+  virtual_src_ct_addr[17] = 0x25A2383E;
+  virtual_src_ct_addr[18] = 0x4724227E;
+  virtual_src_ct_addr[19] = 0x46ADB3D4;
+
+  virtual_src_ct_addr[20] = 0xDB96805D;
+  virtual_src_ct_addr[21] = 0xFF2FE8F9;
+  virtual_src_ct_addr[22] = 0xDF6C1459;
+  virtual_src_ct_addr[23] = 0x7B99FF4F;
+
+  virtual_src_ct_addr[24] = 0x07A99E93;
+  virtual_src_ct_addr[25] = 0x80995D9D;
+  virtual_src_ct_addr[26] = 0x74879750;
+  virtual_src_ct_addr[27] = 0x166FF5CD;
+
+  virtual_src_ct_addr[28] = 0x36000A03;
+  virtual_src_ct_addr[29] = 0x996D45CC;
+  virtual_src_ct_addr[30] = 0xA5951FC4;
+  virtual_src_ct_addr[31] = 0x73BF44AC;
+
+  virtual_src_ct_addr[32] = 0x0346AC24;
+  virtual_src_ct_addr[33] = 0x2E995BC6;
+  virtual_src_ct_addr[34] = 0xED1FD7C2;
+  virtual_src_ct_addr[35] = 0x2AACA619;
+
+  virtual_src_ct_addr[36] = 0xFF0D0FEE;
+  virtual_src_ct_addr[37] = 0x13D3DDC8;
+  virtual_src_ct_addr[38] = 0xDEB28B5C;
+  virtual_src_ct_addr[39] = 0x4AD83373;
+
+  virtual_src_ct_addr[40] = 0x7694B084;
+  virtual_src_ct_addr[41] = 0xD4DB68AE;
+  virtual_src_ct_addr[42] = 0xD1945468;
+  virtual_src_ct_addr[43] = 0xCD0DC178;
+
+  virtual_src_ct_addr[44] = 0x81FC1F4F;
+  virtual_src_ct_addr[45] = 0x347800B7;
+  virtual_src_ct_addr[46] = 0x7D0D3ECD;
+  virtual_src_ct_addr[47] = 0xAEE9BAB0;
+
+  virtual_src_ct_addr[48] = 0x37405AA5;
+  virtual_src_ct_addr[49] = 0xFD8861F3;
+  virtual_src_ct_addr[50] = 0x06FBB84B;
+  virtual_src_ct_addr[51] = 0x3F434E00;
+
+  virtual_src_ct_addr[52] = 0xC18D5D8B;
+  virtual_src_ct_addr[53] = 0x1C9BF006;
+  virtual_src_ct_addr[54] = 0xDF538541;
+  virtual_src_ct_addr[55] = 0x840913D9;
+
+  virtual_src_ct_addr[56] = 0xE0B4731A;
+  virtual_src_ct_addr[57] = 0x50700B61;
+  virtual_src_ct_addr[58] = 0xF365CED6;
+  virtual_src_ct_addr[59] = 0xB5DC5CE5;
+
+  virtual_src_ct_addr[60] = 0xFF86156E;
+  virtual_src_ct_addr[61] = 0xDA38828E;
+  virtual_src_ct_addr[62] = 0x98D21C69;
+  virtual_src_ct_addr[63] = 0xE906320C;
+
+  virtual_src_ct_addr[64] = 0xE112C08D;
+  virtual_src_ct_addr[65] = 0x2002ABE4;
+  virtual_src_ct_addr[66] = 0xEC28A437;
+  virtual_src_ct_addr[67] = 0x9C931023;
 
 	printf("Clearing the destination register block...\n");
     memset(virtual_dst_addr, 0, DST_LENGTH);
