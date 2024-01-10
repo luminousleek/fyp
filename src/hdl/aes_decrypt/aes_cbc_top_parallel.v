@@ -74,7 +74,7 @@ module aes_cbc_top_parallel
     STATE_WAIT_DECRYPT = 4'd10,
     STATE_READ_OUTPUT = 4'd11;
 
-  reg [3:0] state_reg = STATE_LOAD_KEY, state_next;
+  reg [3:0] state_reg = STATE_IDLE, state_next;
 
   // datapath control signals
   reg cs_0_reg = 1'b0, cs_0_next;
@@ -99,12 +99,14 @@ module aes_cbc_top_parallel
   reg [127:0] iv_reg_1;
   reg [127:0] iv_reg_2;
   reg [127:0] iv_reg_3;
+  reg [127:0] iv_reg_0_temp;
   reg [127:0] ct_reg;
 
   reg store_key;
   reg store_iv;
   reg store_ct;
   reg decrypt_ready_bit;
+  reg update_iv_0;
   
   reg [1:0] write_wait_cycle_reg = 2'b0, write_wait_cycle_next;
   reg [6:0] wait_reg = 7'b0, wait_next;
@@ -116,6 +118,7 @@ module aes_cbc_top_parallel
   reg [1:0] ct_word_reg, ct_word_next;
   reg [1:0] load_mux_reg = 2'b0, load_mux_next;
   reg [1:0] output_mux_reg = 2'b0, output_mux_next;
+  reg [1:0] last_decrypt_core_reg = 2'b0, last_decrypt_core_next;
 
   reg s_axis_key_tready_reg, s_axis_key_tready_next;
   reg s_axis_ct_tready_reg, s_axis_ct_tready_next;
@@ -242,6 +245,7 @@ module aes_cbc_top_parallel
     store_iv = 1'b0;
     store_ct = 1'b0;
     decrypt_ready_bit = 1'b0;
+    update_iv_0 = 1'b0;
 
     write_wait_cycle_next = write_wait_cycle_reg;
     wait_next = wait_reg;
@@ -253,6 +257,7 @@ module aes_cbc_top_parallel
     ct_word_next = ct_word_reg;
     load_mux_next = load_mux_reg;
     output_mux_next = output_mux_reg;
+    last_decrypt_core_next = last_decrypt_core_reg;
 
     m_axis_pt_tdata_int = 32'd0;
     m_axis_pt_tkeep_int = 4'd0;
@@ -483,6 +488,7 @@ module aes_cbc_top_parallel
           load_mux_next = load_mux_reg + 2'd1;
           if (last_ct_word_reg) begin
             last_decrypt_next = 1'b1;
+            last_decrypt_core_next = load_mux_reg;
           end
           if (load_mux_reg == 2'd3 || last_ct_word_reg) begin
             wait_next = 7'b0;
@@ -592,7 +598,10 @@ module aes_cbc_top_parallel
         m_axis_pt_tuser_int = 1'b0;
         if (ct_word_reg == 2'd3) begin
           output_mux_next = output_mux_reg + 2'd1;
-          if (last_decrypt_reg) begin
+          if (output_mux_reg == 2'd0) begin
+            update_iv_0 = 1'b1;
+          end
+          if (last_decrypt_reg && output_mux_reg == last_decrypt_core_reg) begin
             m_axis_pt_tlast_int = 1'b1;
             last_ct_word_next = 1'b0;
             last_decrypt_next = 1'b0;
@@ -625,6 +634,8 @@ module aes_cbc_top_parallel
       state_reg <= STATE_IDLE;
       s_axis_key_tready_reg <= 1'b0;
       s_axis_ct_tready_reg <= 1'b0;
+      load_mux_reg <= 2'b0;
+      output_mux_reg <= 2'b0;
     end else begin
       state_reg <= state_next;
       s_axis_key_tready_reg <= s_axis_key_tready_next;
@@ -654,6 +665,7 @@ module aes_cbc_top_parallel
     last_decrypt_reg <= last_decrypt_next;
     load_mux_reg <= load_mux_next;
     output_mux_reg <= output_mux_next;
+    last_decrypt_core_reg <= last_decrypt_core_next;
 
     key_word_reg <= key_word_next;
     iv_word_reg <= iv_word_next;
@@ -697,12 +709,15 @@ module aes_cbc_top_parallel
           iv_reg_3[103 - 32 * ct_word_reg -: 8] <= s_axis_ct_tdata[31:24];
         end
         2'd3: begin
-          iv_reg_0[127 - 32 * ct_word_reg -: 8] <= s_axis_ct_tdata[7:0];
-          iv_reg_0[119 - 32 * ct_word_reg -: 8] <= s_axis_ct_tdata[15:8];
-          iv_reg_0[111 - 32 * ct_word_reg -: 8] <= s_axis_ct_tdata[23:16];
-          iv_reg_0[103 - 32 * ct_word_reg -: 8] <= s_axis_ct_tdata[31:24];
+          iv_reg_0_temp[127 - 32 * ct_word_reg -: 8] <= s_axis_ct_tdata[7:0];
+          iv_reg_0_temp[119 - 32 * ct_word_reg -: 8] <= s_axis_ct_tdata[15:8];
+          iv_reg_0_temp[111 - 32 * ct_word_reg -: 8] <= s_axis_ct_tdata[23:16];
+          iv_reg_0_temp[103 - 32 * ct_word_reg -: 8] <= s_axis_ct_tdata[31:24];
         end
       endcase
+    end
+    if (update_iv_0) begin
+      iv_reg_0 <= iv_reg_0_temp;
     end
   end
 
