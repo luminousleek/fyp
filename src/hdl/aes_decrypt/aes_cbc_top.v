@@ -74,7 +74,7 @@ module aes_cbc_top
     STATE_WAIT_DECRYPT = 4'd10,
     STATE_READ_OUTPUT = 4'd11;
 
-  reg [3:0] state_reg = STATE_LOAD_KEY, state_next;
+  reg [3:0] state_reg = STATE_IDLE, state_next;
 
   // datapath control signals
   reg cs_reg = 1'b0, cs_next;
