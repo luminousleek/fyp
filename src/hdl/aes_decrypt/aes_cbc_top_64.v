@@ -125,7 +125,7 @@ module aes_cbc_top_64
   assign s_axis_ct_tready = s_axis_ct_tready_reg;
 
   // instantiate aes core
-  aes_64 aes_inst(
+  aes_64_decrypt aes_inst(
     .clk(clk),
     .reset_n(reset_n),
 
