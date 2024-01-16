@@ -630,7 +630,8 @@ module aes_cbc_top_parallel_64
             last_decrypt_next = 1'b0;
             load_mux_next = 2'd0;
             output_mux_next = 2'd0;
-            state_next = STATE_WAIT_PAYLOAD; // assume same key for many ct payloads
+            ke_done_next = 1'b0;
+            state_next = STATE_IDLE;
           end else begin
             ct_word_next = 1'b0;
             write_wait_cycle_next = 2'b0;
