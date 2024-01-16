@@ -1,6 +1,7 @@
 /*
 
 Copyright (c) 2014-2018 Alex Forencich
+Modified by Isaac Lee from ip_eth_rx_64.v
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -29,7 +30,7 @@ THE SOFTWARE.
 `default_nettype none
 
 /*
- * IP ethernet frame receiver (Ethernet frame in, IP frame out, 64 bit datapath)
+ * DTLS UDP frame receiver (UDP frame in, DTLS frame out, 64 bit datapath)
  */
 module dtls_udp_rx_64
 (
