@@ -293,14 +293,14 @@ int main(int argc, char *argv[])
   printf("%d bytes read.\n", num_bytes);
 
 	printf("Clearing the destination register block...\n");
-    memset(virtual_dst_addr, 0, DST_LENGTH);
+    memset(virtual_dst_addr, 0, num_bytes + 1);
 
   //   printf("Source memory block data:      ");
 	// print_mem(virtual_src_addr, num_bytes);
   printf("source text: %s\n", (char *) virtual_src_addr);
 
-    printf("Destination memory block data: ");
-	print_mem(virtual_dst_addr,  DST_LENGTH);
+  //   printf("Destination memory block data: ");
+	// print_mem(virtual_dst_addr,  DST_LENGTH);
 
     // printf("Reset the DMA.\n");
     write_dma(dma_virtual_addr, S2MM_CONTROL_REGISTER, RESET_DMA);
@@ -340,8 +340,8 @@ int main(int argc, char *argv[])
     write_dma(dma_virtual_addr, MM2S_TRNSFR_LENGTH_REGISTER, num_bytes);
     // dma_mm2s_status(dma_virtual_addr);
 
-    printf("Writing S2MM transfer length of %d bytes...\n", DST_LENGTH);
-    write_dma(dma_virtual_addr, S2MM_BUFF_LENGTH_REGISTER, DST_LENGTH);
+    printf("Writing S2MM transfer length of %d bytes...\n", num_bytes);
+    write_dma(dma_virtual_addr, S2MM_BUFF_LENGTH_REGISTER, num_bytes);
     // dma_s2mm_status(dma_virtual_addr);
 
     printf("Waiting for MM2S synchronization...\n");
@@ -354,7 +354,7 @@ int main(int argc, char *argv[])
     dma_mm2s_status(dma_virtual_addr);
 
     printf("Destination memory block: ");
-	print_mem(virtual_dst_addr, DST_LENGTH);
+	print_mem(virtual_dst_addr, num_bytes);
 
   printf("dst text: %s\n", (char *) virtual_dst_addr);
 
