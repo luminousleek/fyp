@@ -24,14 +24,14 @@ module access_control
   input  wire        m_axis_tready,
   output wire        m_axis_tlast,
   output wire        m_axis_tuser
-)
+);
 
 localparam [1:0]
-  STATE_IDLE = 2'b0,
-  STATE_ALLOW = 2'b1,
-  STATE_DENY = 2'b2;
+  STATE_IDLE = 2'd0,
+  STATE_ALLOW = 2'd1,
+  STATE_DENY = 2'd2;
 
-reg [7:0] dropped_msg_reg = 64'h00646570706F7244; // "Dropped" backwards
+reg [63:0] dropped_msg_reg = 64'h00646570706F7244; // "Dropped" backwards
 
 reg [1:0] state_reg = STATE_IDLE, state_next;
 reg s_axis_tready_reg, s_axis_tready_next;
@@ -50,7 +50,7 @@ reg        m_axis_tuser_int;
 // FSM
 always @* begin
   state_next = STATE_IDLE;
-  s_axis_tready_reg = 1'b0;
+  s_axis_tready_next = 1'b0;
   ack_next = 1'b0;
 
   m_axis_tdata_int = 64'd0;
@@ -115,6 +115,9 @@ always @* begin
         s_axis_tready_next = 1'b1;
         state_next = STATE_DENY;
       end
+    end
+    default: begin
+      state_next = STATE_IDLE;
     end
   endcase
 end
@@ -200,7 +203,7 @@ always @(posedge clk) begin
     temp_m_axis_tuser_reg <= m_axis_tuser_int;
   end
 
-  if (!reset_n) begin
+  if (reset) begin
     m_axis_tvalid_reg <= 1'b0;
     temp_m_axis_tvalid_reg <= 1'b0;
   end
