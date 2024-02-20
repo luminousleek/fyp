@@ -8,7 +8,7 @@
  * Top-level module for UDP payload from AXI (AXI in, UDP payload out)
  */
 
-module dtls_rx_top_64
+module udp_rx_top_64
 (
   input  wire                  clk,
   input  wire                  rst,
