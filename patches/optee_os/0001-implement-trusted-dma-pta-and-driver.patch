@@ -1,4 +1,4 @@
-From e85c8729ab07b7d336ccc86f79316fdf503219fa Mon Sep 17 00:00:00 2001
+From d7cbd8d1083dfd536645abff23e3387e2d6924ad Mon Sep 17 00:00:00 2001
 From: Isaac Lee <68138671+luminousleek@users.noreply.github.com>
 Date: Thu, 22 Feb 2024 13:25:01 +0800
 Subject: [PATCH] implement trusted dma pta and driver
@@ -222,7 +222,7 @@ index a20bc6c29..2e5b49059 100644
  subdirs-y += bcm
 diff --git a/core/pta/trusted_dma_pta.c b/core/pta/trusted_dma_pta.c
 new file mode 100644
-index 000000000..dfaa0fcd3
+index 000000000..991a58121
 --- /dev/null
 +++ b/core/pta/trusted_dma_pta.c
 @@ -0,0 +1,86 @@
@@ -247,7 +247,7 @@ index 000000000..dfaa0fcd3
 +    return TEE_ERROR_BAD_PARAMETERS;
 +
 +  dma_base_addr = params[0].memref.buffer;
-+  channel = params[1].value.a ? MM2S_CHANNEL : S2MM_CHANNEL;
++  channel = (params[1].value.a == 1) ? MM2S_CHANNEL : S2MM_CHANNEL;
 +
 +  return dma_init(dma_base_addr, channel);
 +}
@@ -265,7 +265,7 @@ index 000000000..dfaa0fcd3
 +    return TEE_ERROR_BAD_PARAMETERS;
 +
 +  dma_base_addr = params[0].memref.buffer;
-+  channel = params[1].value.a ? MM2S_CHANNEL : S2MM_CHANNEL;
++  channel = (params[1].value.a == 1) ? MM2S_CHANNEL : S2MM_CHANNEL;
 +
 +  return dma_sync(dma_base_addr, channel);
 +}
@@ -287,7 +287,7 @@ index 000000000..dfaa0fcd3
 +  dma_base_addr = params[0].memref.buffer;
 +  transfer_mem_addr = params[1].memref.buffer;
 +  transfer_length = params[1].memref.size;
-+  channel = params[2].value.a ? MM2S_CHANNEL : S2MM_CHANNEL;
++  channel = (params[2].value.a == 1) ? MM2S_CHANNEL : S2MM_CHANNEL;
 +
 +  return dma_transfer(dma_base_addr, transfer_mem_addr, transfer_length, channel);
 +}
