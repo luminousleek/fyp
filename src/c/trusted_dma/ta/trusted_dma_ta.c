@@ -20,8 +20,6 @@ static TEE_Result cmd_transfer(uint32_t param_types, TEE_Param params[TEE_NUM_PA
   uint32_t pta_param_types;
   uint32_t return_origin;
   uintptr_t dma_base_addr;
-  uintptr_t transfer_mem_addr;
-  uint32_t transfer_length;
   uint32_t is_mm2s;
   const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_INPUT,
 						TEE_PARAM_TYPE_MEMREF_INPUT,
@@ -32,18 +30,16 @@ static TEE_Result cmd_transfer(uint32_t param_types, TEE_Param params[TEE_NUM_PA
     return TEE_ERROR_BAD_PARAMETERS;
 
   dma_base_addr = params[0].memref.buffer;
-  transfer_mem_addr = params[1].memref.buffer;
-  transfer_length = params[1].memref.size;
   is_mm2s = params[2].value.a;
 
-  char channel_string[] = is_mm2s ? "MM2S" : "S2MM";
+  char channel_string[] = (is_mm2s == 1) ? "MM2S" : "S2MM";
 
   pta_param_types = TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_INPUT,
             TEE_PARAM_TYPE_VALUE_INPUT,
             TEE_PARAM_TYPE_NONE,
             TEE_PARAM_TYPE_NONE);
 
-  TEE_MemFill(*pta_params, 0, sizeof(pta_params));
+  // TEE_MemFill(*pta_params, 0, sizeof(pta_params));
   pta_params[0].memref.buffer = dma_base_addr;
   pta_params[1].value.a = is_mm2s;
 
@@ -51,21 +47,21 @@ static TEE_Result cmd_transfer(uint32_t param_types, TEE_Param params[TEE_NUM_PA
   res = TEE_InvokeTACommand(sess, TEE_TIMEOUT_INFINITE, PTA_CMD_TRUSTED_DMA_INIT,
     pta_param_types, pta_params, &return_origin);
   if (res) {
-    EMSG("PTA DMA Init(%p, %s): %d", dma_base_addr, channel_string, opteestrerr(res));
+    EMSG("PTA DMA Init(%p, %s): %s", dma_base_addr, channel_string, opteestrerr(res));
   }
 
   DMSG("Transferring to DMA at address %p with %s channel", dma_base_addr, channel_string);
   res = TEE_InvokeTACommand(sess, TEE_TIMEOUT_INFINITE, PTA_CMD_TRUSTED_DMA_TRANSFER,
     param_types, params, &return_origin);
   if (res) {
-    EMSG("PTA DMA Transfer(%p, %s): %d", dma_base_addr, channel_string, opteestrerr(res));
+    EMSG("PTA DMA Transfer(%p, %s): %s", dma_base_addr, channel_string, opteestrerr(res));
   }
 
   DMSG("Syncing DMA at address %p with %s channel", dma_base_addr, channel_string);
   res = TEE_InvokeTACommand(sess, TEE_TIMEOUT_INFINITE, PTA_CMD_TRUSTED_DMA_SYNC,
     pta_param_types, pta_params, &return_origin);
   if (res) {
-    EMSG("PTA DMA Sync(%p, %s): %d", dma_base_addr, channel_string, opteestrerr(res));
+    EMSG("PTA DMA Sync(%p, %s): %s", dma_base_addr, channel_string, opteestrerr(res));
   }
 
   return res;

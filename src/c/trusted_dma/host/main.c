@@ -63,9 +63,6 @@ int main(int argc, char *argv[])
   printf("Memory map the MM2S source address for key register block.\n");
     unsigned int *virtual_src_addr  = mmap(NULL, 65535, PROT_READ | PROT_WRITE, MAP_SHARED, ddr_memory, SRC_PHY_ADDR);
 
-  printf("Memory map the S2MM destination address for key register block.\n");
-    unsigned int *virtual_dst_addr = mmap(NULL, 65535, PROT_READ | PROT_WRITE, MAP_SHARED, ddr_memory, DST_PHY_ADDR);
-
   printf("Copy payload to virtual source address.\n");
   memcpy(virtual_src_addr, payload, transfer_length);
 

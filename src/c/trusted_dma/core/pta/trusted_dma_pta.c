@@ -19,7 +19,7 @@ static TEE_Result pta_cmd_trusted_dma_init(uint32_t param_types, TEE_Param param
     return TEE_ERROR_BAD_PARAMETERS;
 
   dma_base_addr = params[0].memref.buffer;
-  channel = params[1].value.a ? MM2S_CHANNEL : S2MM_CHANNEL;
+  channel = (params[1].value.a == 1) ? MM2S_CHANNEL : S2MM_CHANNEL;
 
   return dma_init(dma_base_addr, channel);
 }
@@ -37,7 +37,7 @@ static TEE_Result pta_cmd_trusted_dma_sync(uint32_t param_types, TEE_Param param
     return TEE_ERROR_BAD_PARAMETERS;
 
   dma_base_addr = params[0].memref.buffer;
-  channel = params[1].value.a ? MM2S_CHANNEL : S2MM_CHANNEL;
+  channel = (params[1].value.a == 1) ? MM2S_CHANNEL : S2MM_CHANNEL;
 
   return dma_sync(dma_base_addr, channel);
 }
@@ -59,7 +59,7 @@ static TEE_Result pta_cmd_trusted_dma_transfer(uint32_t param_types, TEE_Param p
   dma_base_addr = params[0].memref.buffer;
   transfer_mem_addr = params[1].memref.buffer;
   transfer_length = params[1].memref.size;
-  channel = params[2].value.a ? MM2S_CHANNEL : S2MM_CHANNEL;
+  channel = (params[2].value.a == 1) ? MM2S_CHANNEL : S2MM_CHANNEL;
 
   return dma_transfer(dma_base_addr, transfer_mem_addr, transfer_length, channel);
 }
