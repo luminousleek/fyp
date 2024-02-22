@@ -21,6 +21,7 @@ static TEE_Result cmd_transfer(uint32_t param_types, TEE_Param params[TEE_NUM_PA
   uint32_t return_origin;
   uintptr_t dma_base_addr;
   uint32_t is_mm2s;
+  char* channel_string;
   const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_INPUT,
 						TEE_PARAM_TYPE_MEMREF_INPUT,
 						TEE_PARAM_TYPE_VALUE_INPUT,
@@ -32,7 +33,11 @@ static TEE_Result cmd_transfer(uint32_t param_types, TEE_Param params[TEE_NUM_PA
   dma_base_addr = params[0].memref.buffer;
   is_mm2s = params[2].value.a;
 
-  char channel_string[] = (is_mm2s == 1) ? "MM2S" : "S2MM";
+  if (is_mm2s) {
+    channel_string = "MM2S";
+  } else {
+    channel_string = "S2MM";
+  }
 
   pta_param_types = TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_INPUT,
             TEE_PARAM_TYPE_VALUE_INPUT,

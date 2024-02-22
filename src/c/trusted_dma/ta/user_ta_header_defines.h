@@ -10,7 +10,7 @@
 #ifndef USER_TA_HEADER_DEFINES_H
 #define USER_TA_HEADER_DEFINES_H
 
-#include <nonce_sign_ta.h>
+#include <trusted_dma_ta.h>
 
 #define TA_UUID				TA_TRUSTED_DMA_UUID
 
