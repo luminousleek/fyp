@@ -1,0 +1,566 @@
+From a88560656786b413e9338a3b140dac2b202f7c8c Mon Sep 17 00:00:00 2001
+From: Isaac Lee <68138671+luminousleek@users.noreply.github.com>
+Date: Thu, 22 Feb 2024 13:34:19 +0800
+Subject: [PATCH] implement trusted dma app
+
+---
+ trusted_dma/Android.mk                  |  17 +++
+ trusted_dma/CMakeLists.txt              |  13 +++
+ trusted_dma/Makefile                    |  15 +++
+ trusted_dma/host/Makefile               |  28 +++++
+ trusted_dma/host/main.c                 | 124 ++++++++++++++++++++++
+ trusted_dma/ta/Android.mk               |   4 +
+ trusted_dma/ta/Makefile                 |  13 +++
+ trusted_dma/ta/include/trusted_dma_ta.h |  93 +++++++++++++++++
+ trusted_dma/ta/sub.mk                   |   2 +
+ trusted_dma/ta/trusted_dma_ta.c         | 132 ++++++++++++++++++++++++
+ trusted_dma/ta/user_ta_header_defines.h |  26 +++++
+ 11 files changed, 467 insertions(+)
+ create mode 100644 trusted_dma/Android.mk
+ create mode 100644 trusted_dma/CMakeLists.txt
+ create mode 100644 trusted_dma/Makefile
+ create mode 100644 trusted_dma/host/Makefile
+ create mode 100644 trusted_dma/host/main.c
+ create mode 100644 trusted_dma/ta/Android.mk
+ create mode 100644 trusted_dma/ta/Makefile
+ create mode 100644 trusted_dma/ta/include/trusted_dma_ta.h
+ create mode 100644 trusted_dma/ta/sub.mk
+ create mode 100644 trusted_dma/ta/trusted_dma_ta.c
+ create mode 100644 trusted_dma/ta/user_ta_header_defines.h
+
+diff --git a/trusted_dma/Android.mk b/trusted_dma/Android.mk
+new file mode 100644
+index 0000000..28de601
+--- /dev/null
++++ b/trusted_dma/Android.mk
+@@ -0,0 +1,17 @@
++LOCAL_PATH := $(call my-dir)
++
++include $(CLEAR_VARS)
++LOCAL_CFLAGS += -DANDROID_BUILD
++LOCAL_CFLAGS += -Wall
++
++LOCAL_SRC_FILES += host/main.c
++
++LOCAL_C_INCLUDES := $(LOCAL_PATH)/ta/include
++
++LOCAL_SHARED_LIBRARIES := libteec
++LOCAL_MODULE := optee_example_acipher
++LOCAL_VENDOR_MODULE := true
++LOCAL_MODULE_TAGS := optional
++include $(BUILD_EXECUTABLE)
++
++include $(LOCAL_PATH)/ta/Android.mk
+diff --git a/trusted_dma/CMakeLists.txt b/trusted_dma/CMakeLists.txt
+new file mode 100644
+index 0000000..1833328
+--- /dev/null
++++ b/trusted_dma/CMakeLists.txt
+@@ -0,0 +1,13 @@
++project (trusted_dma C)
++
++set (SRC host/main.c)
++
++add_executable (${PROJECT_NAME} ${SRC})
++
++target_include_directories(${PROJECT_NAME}
++			   PRIVATE ta/include
++			   PRIVATE include)
++
++target_link_libraries (${PROJECT_NAME} PRIVATE teec)
++
++install (TARGETS ${PROJECT_NAME} DESTINATION ${CMAKE_INSTALL_BINDIR})
+diff --git a/trusted_dma/Makefile b/trusted_dma/Makefile
+new file mode 100644
+index 0000000..dfa4f8b
+--- /dev/null
++++ b/trusted_dma/Makefile
+@@ -0,0 +1,15 @@
++export V ?= 0
++
++# If _HOST or _TA specific compilers are not specified, then use CROSS_COMPILE
++HOST_CROSS_COMPILE ?= $(CROSS_COMPILE)
++TA_CROSS_COMPILE ?= $(CROSS_COMPILE)
++
++.PHONY: all
++all:
++	$(MAKE) -C host CROSS_COMPILE="$(HOST_CROSS_COMPILE)" --no-builtin-variables
++	$(MAKE) -C ta CROSS_COMPILE="$(TA_CROSS_COMPILE)" LDFLAGS=""
++
++.PHONY: clean
++clean:
++	$(MAKE) -C host clean
++	$(MAKE) -C ta clean
+diff --git a/trusted_dma/host/Makefile b/trusted_dma/host/Makefile
+new file mode 100644
+index 0000000..0012566
+--- /dev/null
++++ b/trusted_dma/host/Makefile
+@@ -0,0 +1,28 @@
++CC      ?= $(CROSS_COMPILE)gcc
++LD      ?= $(CROSS_COMPILE)ld
++AR      ?= $(CROSS_COMPILE)ar
++NM      ?= $(CROSS_COMPILE)nm
++OBJCOPY ?= $(CROSS_COMPILE)objcopy
++OBJDUMP ?= $(CROSS_COMPILE)objdump
++READELF ?= $(CROSS_COMPILE)readelf
++
++OBJS = main.o
++
++CFLAGS += -Wall -I../ta/include -I./include
++CFLAGS += -I$(TEEC_EXPORT)/include
++LDADD += -lteec -L$(TEEC_EXPORT)/lib
++
++BINARY = trusted_dma
++
++.PHONY: all
++all: $(BINARY)
++
++$(BINARY): $(OBJS)
++	$(CC) $(LDFLAGS) -o $@ $< $(LDADD)
++
++.PHONY: clean
++clean:
++	rm -f $(OBJS) $(BINARY)
++
++%.o: %.c
++	$(CC) $(CFLAGS) -c $< -o $@
+diff --git a/trusted_dma/host/main.c b/trusted_dma/host/main.c
+new file mode 100644
+index 0000000..698a64d
+--- /dev/null
++++ b/trusted_dma/host/main.c
+@@ -0,0 +1,124 @@
++// SPDX-License-Identifier: BSD-2-Clause
++/*
++ * Copyright (c) 2018, Linaro Limited
++ */
++
++#include <err.h>
++#include <fcntl.h>
++#include <inttypes.h>
++#include <limits.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <unistd.h>
++#include <sys/mman.h>
++
++/* OP-TEE TEE client API (built by optee_client) */
++#include <tee_client_api.h>
++
++/* For the UUID (found in the TA's h-file(s)) */
++#include <trusted_dma_ta.h>
++
++#define NONCE_SIZE 32
++#define KEY_SIZE   1024
++#define SIG_SIZE   KEY_SIZE / 8
++#define TRUSTED_DMA_BASE_ADDR 0xA0000000
++#define SECURE_MEM_PHY_ADDR   0x10000000
++#define SRC_PHY_ADDR          0x0e000000
++#define DST_PHY_ADDR          0x0f000000
++
++static void teec_err(TEEC_Result res, uint32_t eo, const char *str)
++{
++	errx(1, "%s: %#" PRIx32 " (error origin %#" PRIx32 ")", str, res, eo);
++}
++
++int main(int argc, char *argv[])
++{
++	TEEC_Result res;
++	uint32_t eo;
++	TEEC_Context ctx;
++	TEEC_Session sess;
++	TEEC_Operation op;
++	const char payload[] = "hello world! this went through the trusted dma";
++  uint32_t transfer_length = sizeof(payload);
++  char* result;
++	size_t n;
++	const TEEC_UUID uuid = TA_TRUSTED_DMA_UUID;
++
++	res = TEEC_InitializeContext(NULL, &ctx);
++	if (res)
++		errx(1, "TEEC_InitializeContext(NULL, x): %#" PRIx32, res);
++
++	res = TEEC_OpenSession(&ctx, &sess, &uuid, TEEC_LOGIN_PUBLIC, NULL,
++			       NULL, &eo);
++	if (res)
++		teec_err(res, eo, "TEEC_OpenSession(TEEC_LOGIN_PUBLIC)");
++
++  result = (char *) malloc(sizeof(char) * (transfer_length));
++  memset(result, 0, transfer_length);
++
++  printf("Opening a character device file of the ZynqMP's DDR memory...\n");
++	int ddr_memory = open("/dev/mem", O_RDWR | O_SYNC);
++
++  printf("Memory map the MM2S source address for key register block.\n");
++    unsigned int *virtual_src_addr  = mmap(NULL, 65535, PROT_READ | PROT_WRITE, MAP_SHARED, ddr_memory, SRC_PHY_ADDR);
++
++  printf("Memory map the S2MM destination address for key register block.\n");
++    unsigned int *virtual_dst_addr = mmap(NULL, 65535, PROT_READ | PROT_WRITE, MAP_SHARED, ddr_memory, DST_PHY_ADDR);
++
++  printf("Copy payload to virtual source address.\n");
++  memcpy(virtual_src_addr, payload, transfer_length);
++
++	memset(&op, 0, sizeof(op));
++  
++	op.paramTypes = TEEC_PARAM_TYPES(TEEC_MEMREF_TEMP_INPUT, 
++          TEEC_MEMREF_TEMP_INPUT,
++					TEEC_VALUE_INPUT,
++          TEEC_NONE);
++  op.params[0].tmpref.buffer = TRUSTED_DMA_BASE_ADDR;
++  op.params[1].tmpref.buffer = SRC_PHY_ADDR;
++  op.params[1].tmpref.size = transfer_length;
++  op.params[2].value.a = 1;
++
++  printf("Transferring to MM2S channel.\n");
++	res = TEEC_InvokeCommand(&sess, TA_TRUSTED_DMA_CMD_TRANSFER, &op, &eo);
++	if (res)
++		teec_err(res, eo, "TEEC_InvokeCommand(TA_TRUSTED_DMA_CMD_TRANSFER)");
++
++  memset(&op, 0, sizeof(op));
++	op.paramTypes = TEEC_PARAM_TYPES(TEEC_MEMREF_TEMP_INPUT, 
++          TEEC_MEMREF_TEMP_INPUT,
++					TEEC_VALUE_INPUT,
++          TEEC_NONE);
++  op.params[0].tmpref.buffer = TRUSTED_DMA_BASE_ADDR;
++  op.params[1].tmpref.buffer = DST_PHY_ADDR;
++  op.params[1].tmpref.size = transfer_length;
++  op.params[2].value.a = 0;
++
++  printf("Transferring to S2MM channel.\n");
++  res = TEEC_InvokeCommand(&sess, TA_TRUSTED_DMA_CMD_TRANSFER, &op, &eo);
++	if (res)
++		teec_err(res, eo, "TEEC_InvokeCommand(TA_TRUSTED_DMA_CMD_TRANSFER)");
++
++  memset(&op, 0, sizeof(op));
++	op.paramTypes = TEEC_PARAM_TYPES(TEEC_MEMREF_TEMP_INPUT, 
++          TEEC_MEMREF_TEMP_OUTPUT,
++					TEEC_NONE,
++          TEEC_NONE);
++  op.params[0].tmpref.buffer = DST_PHY_ADDR;
++  op.params[0].tmpref.size = transfer_length;
++  op.params[1].tmpref.buffer = result;
++
++  printf("Reading secure memory\n");
++  res = TEEC_InvokeCommand(&sess, TA_TRUSTED_DMA_CMD_READ_DST, &op, &eo);
++	if (res)
++		teec_err(res, eo, "TEEC_InvokeCommand(TA_TRUSTED_DMA_CMD_READ_DST)");
++
++	printf("Result: ");
++	for (n = 0; n < op.params[0].tmpref.size; n++)
++		printf("%02x ", ((uint8_t *)op.params[1].tmpref.buffer)[n]);
++	printf("\n");
++  printf("%s", result);
++
++	return 0;
++}
+diff --git a/trusted_dma/ta/Android.mk b/trusted_dma/ta/Android.mk
+new file mode 100644
+index 0000000..0d27a2d
+--- /dev/null
++++ b/trusted_dma/ta/Android.mk
+@@ -0,0 +1,4 @@
++LOCAL_PATH := $(call my-dir)
++
++local_module := 3d8c6025-55ad-4c7e-b061-933af95cd0dd.ta
++include $(BUILD_OPTEE_MK)
+diff --git a/trusted_dma/ta/Makefile b/trusted_dma/ta/Makefile
+new file mode 100644
+index 0000000..9598077
+--- /dev/null
++++ b/trusted_dma/ta/Makefile
+@@ -0,0 +1,13 @@
++CFG_TEE_TA_LOG_LEVEL ?= 4
++CFG_TA_OPTEE_CORE_API_COMPAT_1_1=y
++
++# The UUID for the Trusted Application
++BINARY=3d8c6025-55ad-4c7e-b061-933af95cd0dd
++
++-include $(TA_DEV_KIT_DIR)/mk/ta_dev_kit.mk
++
++ifeq ($(wildcard $(TA_DEV_KIT_DIR)/mk/ta_dev_kit.mk), )
++clean:
++	@echo 'Note: $$(TA_DEV_KIT_DIR)/mk/ta_dev_kit.mk not found, cannot clean TA'
++	@echo 'Note: TA_DEV_KIT_DIR=$(TA_DEV_KIT_DIR)'
++endif
+diff --git a/trusted_dma/ta/include/trusted_dma_ta.h b/trusted_dma/ta/include/trusted_dma_ta.h
+new file mode 100644
+index 0000000..bfd5374
+--- /dev/null
++++ b/trusted_dma/ta/include/trusted_dma_ta.h
+@@ -0,0 +1,93 @@
++// SPDX-License-Identifier: BSD-2-Clause
++/*
++ * Copyright (c) 2018, Linaro Limited
++ */
++
++#ifndef __TRUSTED_DMA_TA_H__
++#define __TRUSTED_DMA_TA_H__
++
++/* UUID of the trusted DMA trusted application */
++#define PTA_TRUSTED_DMA_UUID \
++	{ 0xe1429e6f, 0xd436, 0x4c53, \
++		{ 0xbe, 0x3b, 0x9e, 0x15, 0x36, 0x50, 0xe6, 0x1f} }
++
++
++#define TA_TRUSTED_DMA_UUID \
++	{ 0x3d8c6025, 0x55ad, 0x4c7e, \
++		{ 0xb0, 0x61, 0x93, 0x3a, 0xf9, 0x5c, 0xd0, 0xdd} }
++
++
++/*
++ * in params[0].memref dma_base_addr
++ * in params[1].memref transfer_mem_addr
++ * in params[2].value  1 if MM2S channel, 0 if S2MM channel
++ */
++#define TA_TRUSTED_DMA_CMD_TRANSFER 0
++
++/*
++ * in params[0].memref  dst_mem_addr
++ * out params[1].memref ns_output_buf
++ */
++#define TA_TRUSTED_DMA_CMD_READ_DST 1
++
++static const char *opteestrerr(unsigned err)
++{
++    switch (err) {
++    case 0x00000000:
++        return "TEEC_SUCCESS";
++    case 0xF0100003:
++        return "TEEC_ERROR_STORAGE_NOT_AVAILABLE";
++    case 0xFFFF0000:
++        return "TEEC_ERROR_GENERIC";
++    case 0xFFFF0001:
++        return "TEEC_ERROR_ACCESS_DENIED";
++    case 0xFFFF0002:
++        return "TEEC_ERROR_CANCEL";
++    case 0xFFFF0003:
++        return "TEEC_ERROR_ACCESS_CONFLICT";
++    case 0xFFFF0004:
++        return "TEEC_ERROR_EXCESS_DATA";
++    case 0xFFFF0005:
++        return "TEEC_ERROR_BAD_FORMAT";
++    case 0xFFFF0006:
++        return "TEEC_ERROR_BAD_PARAMETERS";
++    case 0xFFFF0007:
++        return "TEEC_ERROR_BAD_STATE";
++    case 0xFFFF0008:
++        return "TEEC_ERROR_ITEM_NOT_FOUND";
++    case 0xFFFF0009:
++        return "TEEC_ERROR_NOT_IMPLEMENTED";
++    case 0xFFFF000A:
++        return "TEEC_ERROR_NOT_SUPPORTED";
++    case 0xFFFF000B:
++        return "TEEC_ERROR_NO_DATA";
++    case 0xFFFF000C:
++        return "TEEC_ERROR_OUT_OF_MEMORY";
++    case 0xFFFF000D:
++        return "TEEC_ERROR_BUSY";
++    case 0xFFFF000E:
++        return "TEEC_ERROR_COMMUNICATION";
++    case 0xFFFF000F:
++        return "TEEC_ERROR_SECURITY";
++    case 0xFFFF0010:
++        return "TEEC_ERROR_SHORT_BUFFER";
++    case 0xFFFF0011:
++        return "TEEC_ERROR_EXTERNAL_CANCEL";
++    case 0xFFFF3024:
++        return "TEEC_ERROR_TARGET_DEAD";
++    case 0xFFFF3041:
++        return "TEEC_ERROR_STORAGE_NO_SPACE";
++    case 0x00000001:
++        return "TEEC_ORIGIN_API";
++    case 0x00000002:
++        return "TEEC_ORIGIN_COMMS";
++    case 0x00000003:
++        return "TEEC_ORIGIN_TEE";
++    case 0x00000004:
++        return "TEEC_ORIGIN_TRUSTED_APP";
++    default:
++        return "(unknown)";
++    }
++}
++
++#endif /* __NONCE_SIGN_TA_H */
+diff --git a/trusted_dma/ta/sub.mk b/trusted_dma/ta/sub.mk
+new file mode 100644
+index 0000000..19bb321
+--- /dev/null
++++ b/trusted_dma/ta/sub.mk
+@@ -0,0 +1,2 @@
++global-incdirs-y += include
++srcs-y += trusted_dma_ta.c
+diff --git a/trusted_dma/ta/trusted_dma_ta.c b/trusted_dma/ta/trusted_dma_ta.c
+new file mode 100644
+index 0000000..c09b78b
+--- /dev/null
++++ b/trusted_dma/ta/trusted_dma_ta.c
+@@ -0,0 +1,132 @@
++// SPDX-License-Identifier: BSD-2-Clause
++/*
++ * Copyright (c) 2018, Linaro Limited
++ */
++
++#include <inttypes.h>
++
++#include <tee_internal_api.h>
++
++#include <trusted_dma_ta.h>
++#include <pta_trusted_dma.h>
++
++static TEE_TASessionHandle sess = TEE_HANDLE_NULL;
++static const TEE_UUID trusted_dma_pta_uuid = PTA_TRUSTED_DMA_UUID;
++
++static TEE_Result cmd_transfer(uint32_t param_types, TEE_Param params[TEE_NUM_PARAMS])
++{
++  TEE_Result res;
++  TEE_Param pta_params[TEE_NUM_PARAMS];
++  uint32_t pta_param_types;
++  uint32_t return_origin;
++  uintptr_t dma_base_addr;
++  uintptr_t transfer_mem_addr;
++  uint32_t transfer_length;
++  uint32_t is_mm2s;
++  const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_INPUT,
++						TEE_PARAM_TYPE_MEMREF_INPUT,
++						TEE_PARAM_TYPE_VALUE_INPUT,
++						TEE_PARAM_TYPE_NONE);
++
++  if (param_types != exp_pt)
++    return TEE_ERROR_BAD_PARAMETERS;
++
++  dma_base_addr = params[0].memref.buffer;
++  transfer_mem_addr = params[1].memref.buffer;
++  transfer_length = params[1].memref.size;
++  is_mm2s = params[2].value.a;
++
++  char channel_string[] = is_mm2s ? "MM2S" : "S2MM";
++
++  pta_param_types = TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_INPUT,
++            TEE_PARAM_TYPE_VALUE_INPUT,
++            TEE_PARAM_TYPE_NONE,
++            TEE_PARAM_TYPE_NONE);
++
++  TEE_MemFill(*pta_params, 0, sizeof(pta_params));
++  pta_params[0].memref.buffer = dma_base_addr;
++  pta_params[1].value.a = is_mm2s;
++
++  DMSG("Initialising DMA at address %p with %s channel", dma_base_addr, channel_string);
++  res = TEE_InvokeTACommand(sess, TEE_TIMEOUT_INFINITE, PTA_CMD_TRUSTED_DMA_INIT,
++    pta_param_types, pta_params, &return_origin);
++  if (res) {
++    EMSG("PTA DMA Init(%p, %s): %d", dma_base_addr, channel_string, opteestrerr(res));
++  }
++
++  DMSG("Transferring to DMA at address %p with %s channel", dma_base_addr, channel_string);
++  res = TEE_InvokeTACommand(sess, TEE_TIMEOUT_INFINITE, PTA_CMD_TRUSTED_DMA_TRANSFER,
++    param_types, params, &return_origin);
++  if (res) {
++    EMSG("PTA DMA Transfer(%p, %s): %d", dma_base_addr, channel_string, opteestrerr(res));
++  }
++
++  DMSG("Syncing DMA at address %p with %s channel", dma_base_addr, channel_string);
++  res = TEE_InvokeTACommand(sess, TEE_TIMEOUT_INFINITE, PTA_CMD_TRUSTED_DMA_SYNC,
++    pta_param_types, pta_params, &return_origin);
++  if (res) {
++    EMSG("PTA DMA Sync(%p, %s): %d", dma_base_addr, channel_string, opteestrerr(res));
++  }
++
++  return res;
++}
++
++static TEE_Result cmd_read_dst(uint32_t param_types, TEE_Param params[TEE_NUM_PARAMS])
++{
++  TEE_Result res;
++  uint32_t return_origin;
++  const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_INPUT,
++						TEE_PARAM_TYPE_MEMREF_OUTPUT,
++						TEE_PARAM_TYPE_VALUE_INPUT,
++						TEE_PARAM_TYPE_NONE);
++
++  if (param_types != exp_pt)
++    return TEE_ERROR_BAD_PARAMETERS;
++
++  DMSG("Moving %d bytes of memory from %p to %p", params[0].memref.size, params[0].memref.buffer, params[1].memref.buffer);
++  TEE_MemMove(params[1].memref.buffer, params[0].memref.buffer, params[0].memref.size);
++  return TEE_SUCCESS;
++}
++
++TEE_Result TA_CreateEntryPoint(void)
++{
++	TEE_Result res  = TEE_ERROR_GENERIC;
++  DMSG("Opening PTA session...");
++  res = TEE_OpenTASession(&trusted_dma_pta_uuid, TEE_TIMEOUT_INFINITE, 0, NULL, &sess, NULL);
++  DMSG("TEE_OpenTASession returns res=0x%x", res);
++	return res;
++}
++
++void TA_DestroyEntryPoint(void)
++{
++	DMSG("Closing PTA session...");
++  TEE_CloseTASession(sess);
++}
++
++TEE_Result TA_OpenSessionEntryPoint(uint32_t __unused param_types,
++					TEE_Param __unused params[4],
++					void __unused **session)
++{
++	/* Nothing to do */
++	return TEE_SUCCESS;
++}
++
++void TA_CloseSessionEntryPoint(void __unused *session)
++{
++  (void)&session;
++}
++
++TEE_Result TA_InvokeCommandEntryPoint(void __unused *session, uint32_t cmd,
++				      uint32_t param_types,
++				      TEE_Param params[TEE_NUM_PARAMS])
++{
++	switch (cmd) {
++  case TA_TRUSTED_DMA_CMD_TRANSFER:
++    return cmd_transfer(param_types, params);
++	case TA_TRUSTED_DMA_CMD_READ_DST:
++		return cmd_read_dst(param_types, params);
++	default:
++		EMSG("Command ID %#" PRIx32 " is not supported", cmd);
++		return TEE_ERROR_NOT_SUPPORTED;
++	}
++}
+diff --git a/trusted_dma/ta/user_ta_header_defines.h b/trusted_dma/ta/user_ta_header_defines.h
+new file mode 100644
+index 0000000..c7f26b0
+--- /dev/null
++++ b/trusted_dma/ta/user_ta_header_defines.h
+@@ -0,0 +1,26 @@
++// SPDX-License-Identifier: BSD-2-Clause
++/*
++ * Copyright (c) 2018, Linaro Limited
++ */
++
++/*
++ * The name of this file must not be modified
++ */
++
++#ifndef USER_TA_HEADER_DEFINES_H
++#define USER_TA_HEADER_DEFINES_H
++
++#include <nonce_sign_ta.h>
++
++#define TA_UUID				TA_TRUSTED_DMA_UUID
++
++#define TA_FLAGS			TA_FLAG_EXEC_DDR
++#define TA_STACK_SIZE			(2 * 1024)
++#define TA_DATA_SIZE			(32 * 1024)
++
++#define TA_CURRENT_TA_EXT_PROPERTIES \
++    { "gp.ta.description", USER_TA_PROP_TYPE_STRING, \
++        "TA that passes data to the PL through an AXI DMA block" }, \
++    { "gp.ta.version", USER_TA_PROP_TYPE_U32, &(const uint32_t){ 0x0010 } }
++
++#endif /*USER_TA_HEADER_DEFINES_H*/
+-- 
+2.34.1
+
