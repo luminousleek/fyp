@@ -3,19 +3,19 @@
 #include <mm/core_memprot.h>
 #include <util.h>
 
-uint32_t write_dma(uintptr_t *virtual_addr, uint32_t offset, uint32_t value)
+uint32_t write_dma(void *virtual_addr, uint32_t offset, uint32_t value)
 {
     virtual_addr[offset>>2] = value;
 
     return 0;
 }
 
-uint32_t read_dma(uintptr_t *virtual_addr, uint32_t offset)
+uint32_t read_dma(void *virtual_addr, uint32_t offset)
 {
     return virtual_addr[offset>>2];
 }
 
-uint32_t reset_dma(uintptr_t *dma_virtual_addr, enum dma_channel channel)
+uint32_t reset_dma(void *dma_virtual_addr, enum dma_channel channel)
 {
   if (channel == S2MM_CHANNEL) {
     return write_dma(dma_virtual_addr, S2MM_CONTROL_REGISTER, RESET_DMA);
@@ -24,7 +24,7 @@ uint32_t reset_dma(uintptr_t *dma_virtual_addr, enum dma_channel channel)
   }
 }
 
-uint32_t halt_dma(uintptr_t *dma_virtual_addr, enum dma_channel channel)
+uint32_t halt_dma(void *dma_virtual_addr, enum dma_channel channel)
 {
   if (channel == S2MM_CHANNEL) {
     return write_dma(dma_virtual_addr, S2MM_CONTROL_REGISTER, HALT_DMA);
@@ -33,7 +33,7 @@ uint32_t halt_dma(uintptr_t *dma_virtual_addr, enum dma_channel channel)
   }
 }
 
-uint32_t enable_all_irq(uintptr_t *dma_virtual_addr, enum dma_channel channel)
+uint32_t enable_all_irq(void *dma_virtual_addr, enum dma_channel channel)
 {
   if (channel == S2MM_CHANNEL) {
     return write_dma(dma_virtual_addr, S2MM_CONTROL_REGISTER, ENABLE_ALL_IRQ);
@@ -42,7 +42,7 @@ uint32_t enable_all_irq(uintptr_t *dma_virtual_addr, enum dma_channel channel)
   }
 }
 
-uint32_t run_dma(uintptr_t *dma_virtual_addr, enum dma_channel channel)
+uint32_t run_dma(void *dma_virtual_addr, enum dma_channel channel)
 {
   if (channel == S2MM_CHANNEL) {
     return write_dma(dma_virtual_addr, S2MM_CONTROL_REGISTER, RUN_DMA);
@@ -51,7 +51,7 @@ uint32_t run_dma(uintptr_t *dma_virtual_addr, enum dma_channel channel)
   }
 }
 
-uint32_t set_transfer_len(uintptr_t *dma_virtual_addr, uint32_t length, enum dma_channel channel)
+uint32_t set_transfer_len(void *dma_virtual_addr, uint32_t length, enum dma_channel channel)
 {
   if (channel == S2MM_CHANNEL) {
     return write_dma(dma_virtual_addr, S2MM_BUFF_LENGTH_REGISTER, length);
@@ -60,7 +60,7 @@ uint32_t set_transfer_len(uintptr_t *dma_virtual_addr, uint32_t length, enum dma
   }
 }
 
-uint32_t read_dma_status(uintptr_t *dma_virtual_addr, enum dma_channel channel) {
+uint32_t read_dma_status(void *dma_virtual_addr, enum dma_channel channel) {
   if (channel == S2MM_CHANNEL) {
     return read_dma(dma_virtual_addr, S2MM_STATUS_REGISTER);
   } else {
@@ -68,16 +68,16 @@ uint32_t read_dma_status(uintptr_t *dma_virtual_addr, enum dma_channel channel) 
   }
 }
 
-uint32_t set_transfer_mem_addr(uintptr_t *dma_virtual_addr, uint32_t phy_addr, enum dma_channel channel)
+uint32_t set_transfer_mem_addr(void *dma_virtual_addr, void *phy_addr, enum dma_channel channel)
 {
   if (channel == S2MM_CHANNEL) {
-    return write_dma(dma_virtual_addr, S2MM_DST_ADDRESS_REGISTER, dst_phy_addr);
+    return write_dma(dma_virtual_addr, S2MM_DST_ADDRESS_REGISTER, phy_addr);
   } else {
-    return write_dma(dma_virtual_addr, MM2S_SRC_ADDRESS_REGISTER, src_phy_addr);
+    return write_dma(dma_virtual_addr, MM2S_SRC_ADDRESS_REGISTER, phy_addr);
   }
 }
 
-TEE_Result dma_init(uintptr_t dma_base_addr, enum dma_channel channel)
+TEE_Result dma_init(void *dma_base_addr, enum dma_channel channel)
 {
   register_phys_mem_pgdir(MEM_AREA_IO_SEC, dma_base_addr, DMA_SIZE);
   uintptr_t dma_virtual_addr = core_mmu_get_va(dma_base_addr, MEM_AREA_IO_SEC, DMA_SIZE);
@@ -92,7 +92,7 @@ TEE_Result dma_init(uintptr_t dma_base_addr, enum dma_channel channel)
   return TEE_SUCCESS;
 }
 
-TEE_Result dma_sync(uintptr_t dma_base_addr, enum dma_channel channel)
+TEE_Result dma_sync(void *dma_base_addr, enum dma_channel channel)
 {
   uintptr_t dma_virtual_addr = core_mmu_get_va(dma_base_addr, MEM_AREA_IO_SEC, DMA_SIZE);
   uint64_t tref = timeout_init_us(DMA_DONE_TIMEOUT_USEC);
@@ -111,7 +111,7 @@ TEE_Result dma_sync(uintptr_t dma_base_addr, enum dma_channel channel)
   return TEE_ERROR_GENERIC;
 }
 
-TEE_Result dma_transfer(uintptr_t dma_base_addr, uint32_t transfer_mem_addr, uint32_t length, 
+TEE_Result dma_transfer(void *dma_base_addr, void *transfer_mem_addr, uint32_t length, 
                         enum dma_channel channel)
 {
   uintptr_t dma_virtual_addr = core_mmu_get_va(dma_base_addr, MEM_AREA_IO_SEC, DMA_SIZE);

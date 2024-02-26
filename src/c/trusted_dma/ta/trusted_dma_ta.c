@@ -19,7 +19,7 @@ static TEE_Result cmd_transfer(uint32_t param_types, TEE_Param params[TEE_NUM_PA
   TEE_Param pta_params[TEE_NUM_PARAMS];
   uint32_t pta_param_types;
   uint32_t return_origin;
-  uintptr_t dma_base_addr;
+  void* dma_base_addr;
   uint32_t is_mm2s;
   char* channel_string;
   const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_INPUT,

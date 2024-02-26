@@ -46,9 +46,9 @@ enum dma_channel {
 #define DMA_SIZE                    0x10000
 #define DMA_DONE_TIMEOUT_USEC       3000000
 
-TEE_Result dma_init(uintptr_t dma_base_addr, enum dma_channel channel);
-TEE_Result dma_sync(uintptr_t dma_base_addr, enum dma_channel channel);
-TEE_Result dma_transfer(uintptr_t dma_base_addr, uint32_t transfer_mem_addr, uint32_t length, 
+TEE_Result dma_init(void *dma_base_addr, enum dma_channel channel);
+TEE_Result dma_sync(void *dma_base_addr, enum dma_channel channel);
+TEE_Result dma_transfer(void *dma_base_addr, void *transfer_mem_addr, uint32_t length, 
                         enum dma_channel channel);
 
 #endif

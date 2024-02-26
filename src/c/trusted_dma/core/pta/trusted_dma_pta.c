@@ -8,7 +8,7 @@
 
 static TEE_Result pta_cmd_trusted_dma_init(uint32_t param_types, TEE_Param params [TEE_NUM_PARAMS])
 {
-  uintptr_t dma_base_addr;
+  void* dma_base_addr;
   enum dma_channel channel;
   const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_INPUT,
 						TEE_PARAM_TYPE_VALUE_INPUT,
@@ -26,7 +26,7 @@ static TEE_Result pta_cmd_trusted_dma_init(uint32_t param_types, TEE_Param param
 
 static TEE_Result pta_cmd_trusted_dma_sync(uint32_t param_types, TEE_Param params [TEE_NUM_PARAMS])
 {
-  uintptr_t dma_base_addr;
+  void* dma_base_addr;
   enum dma_channel channel;
   const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_INPUT,
 						TEE_PARAM_TYPE_VALUE_INPUT,
@@ -44,8 +44,8 @@ static TEE_Result pta_cmd_trusted_dma_sync(uint32_t param_types, TEE_Param param
 
 static TEE_Result pta_cmd_trusted_dma_transfer(uint32_t param_types, TEE_Param params [TEE_NUM_PARAMS])
 {
-  uintptr_t dma_base_addr;
-  uintptr_t transfer_mem_addr;
+  void* dma_base_addr;
+  void* transfer_mem_addr;
   uint32_t transfer_length;
   enum dma_channel channel;
   const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_INPUT,
