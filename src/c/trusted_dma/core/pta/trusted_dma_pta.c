@@ -1,8 +1,9 @@
-#include <kernel/pseudo_ta.h>>
+#include <kernel/pseudo_ta.h>
 #include <drivers/zynqmp_dma.h>
 #include <pta_trusted_dma.h>
 #include <tee_api_defines.h>
 #include <tee_api_types.h>
+#include <trace.h>
 
 #define PTA_NAME "trusted_dma.pta"
 
@@ -72,11 +73,11 @@ TEE_Result invoke_command(void *session __unused, uint32_t cmd_id,
   case PTA_CMD_TRUSTED_DMA_INIT:
     return pta_cmd_trusted_dma_init(param_types, params);
 	case PTA_CMD_TRUSTED_DMA_SYNC:
-		return pta_cmd_trusted_dma_sync(session, param_types, params);
+		return pta_cmd_trusted_dma_sync(param_types, params);
 	case PTA_CMD_TRUSTED_DMA_TRANSFER:
-		return pta_cmd_trusted_dma_transfer(session, param_types, params);
+		return pta_cmd_trusted_dma_transfer(param_types, params);
 	default:
-		EMSG("Command ID %#" PRIx32 " is not supported", cmd);
+		EMSG("Command ID %#" PRIx32 " is not supported", cmd_id);
 		return TEE_ERROR_NOT_SUPPORTED;
 	}
 }
