@@ -1,23 +1,39 @@
-From d7cbd8d1083dfd536645abff23e3387e2d6924ad Mon Sep 17 00:00:00 2001
+From 97dbf82d9b398f2c06779cdc504505176b2eb630 Mon Sep 17 00:00:00 2001
 From: Isaac Lee <68138671+luminousleek@users.noreply.github.com>
 Date: Thu, 22 Feb 2024 13:25:01 +0800
 Subject: [PATCH] implement trusted dma pta and driver
 
+change type and fix bugs
+
+enable trusted dma pta config
 ---
+ core/arch/arm/plat-zynqmp/conf.mk     |   1 +
  core/drivers/zynqmp_dma.c             | 127 ++++++++++++++++++++++++++
  core/include/drivers/zynqmp_dma.h     |  54 +++++++++++
  core/pta/sub.mk                       |   1 +
  core/pta/trusted_dma_pta.c            |  86 +++++++++++++++++
  lib/libutee/include/pta_trusted_dma.h |  21 +++++
- 5 files changed, 289 insertions(+)
+ 6 files changed, 290 insertions(+)
  create mode 100644 core/drivers/zynqmp_dma.c
  create mode 100644 core/include/drivers/zynqmp_dma.h
  create mode 100644 core/pta/trusted_dma_pta.c
  create mode 100644 lib/libutee/include/pta_trusted_dma.h
 
+diff --git a/core/arch/arm/plat-zynqmp/conf.mk b/core/arch/arm/plat-zynqmp/conf.mk
+index 4c0a33617..53ced2264 100644
+--- a/core/arch/arm/plat-zynqmp/conf.mk
++++ b/core/arch/arm/plat-zynqmp/conf.mk
+@@ -56,6 +56,7 @@ CFG_SHMEM_SIZE   ?= 0x10000000
+ 
+ CFG_WITH_STATS ?= y
+ CFG_CRYPTO_WITH_CE ?= y
++CFG_TRUSTED_DMA_PTA ?= y
+ 
+ # Enable use of User AES eFuse as device key instead of PUF.
+ # This is needed when images are encrypted with AES eFuse device key (AES_KEY).
 diff --git a/core/drivers/zynqmp_dma.c b/core/drivers/zynqmp_dma.c
 new file mode 100644
-index 000000000..607762f68
+index 000000000..fa5b19905
 --- /dev/null
 +++ b/core/drivers/zynqmp_dma.c
 @@ -0,0 +1,127 @@
@@ -26,19 +42,19 @@ index 000000000..607762f68
 +#include <mm/core_memprot.h>
 +#include <util.h>
 +
-+uint32_t write_dma(uintptr_t *virtual_addr, uint32_t offset, uint32_t value)
++uint32_t write_dma(void *virtual_addr, uint32_t offset, uint32_t value)
 +{
 +    virtual_addr[offset>>2] = value;
 +
 +    return 0;
 +}
 +
-+uint32_t read_dma(uintptr_t *virtual_addr, uint32_t offset)
++uint32_t read_dma(void *virtual_addr, uint32_t offset)
 +{
 +    return virtual_addr[offset>>2];
 +}
 +
-+uint32_t reset_dma(uintptr_t *dma_virtual_addr, enum dma_channel channel)
++uint32_t reset_dma(void *dma_virtual_addr, enum dma_channel channel)
 +{
 +  if (channel == S2MM_CHANNEL) {
 +    return write_dma(dma_virtual_addr, S2MM_CONTROL_REGISTER, RESET_DMA);
@@ -47,7 +63,7 @@ index 000000000..607762f68
 +  }
 +}
 +
-+uint32_t halt_dma(uintptr_t *dma_virtual_addr, enum dma_channel channel)
++uint32_t halt_dma(void *dma_virtual_addr, enum dma_channel channel)
 +{
 +  if (channel == S2MM_CHANNEL) {
 +    return write_dma(dma_virtual_addr, S2MM_CONTROL_REGISTER, HALT_DMA);
@@ -56,7 +72,7 @@ index 000000000..607762f68
 +  }
 +}
 +
-+uint32_t enable_all_irq(uintptr_t *dma_virtual_addr, enum dma_channel channel)
++uint32_t enable_all_irq(void *dma_virtual_addr, enum dma_channel channel)
 +{
 +  if (channel == S2MM_CHANNEL) {
 +    return write_dma(dma_virtual_addr, S2MM_CONTROL_REGISTER, ENABLE_ALL_IRQ);
@@ -65,7 +81,7 @@ index 000000000..607762f68
 +  }
 +}
 +
-+uint32_t run_dma(uintptr_t *dma_virtual_addr, enum dma_channel channel)
++uint32_t run_dma(void *dma_virtual_addr, enum dma_channel channel)
 +{
 +  if (channel == S2MM_CHANNEL) {
 +    return write_dma(dma_virtual_addr, S2MM_CONTROL_REGISTER, RUN_DMA);
@@ -74,7 +90,7 @@ index 000000000..607762f68
 +  }
 +}
 +
-+uint32_t set_transfer_len(uintptr_t *dma_virtual_addr, uint32_t length, enum dma_channel channel)
++uint32_t set_transfer_len(void *dma_virtual_addr, uint32_t length, enum dma_channel channel)
 +{
 +  if (channel == S2MM_CHANNEL) {
 +    return write_dma(dma_virtual_addr, S2MM_BUFF_LENGTH_REGISTER, length);
@@ -83,7 +99,7 @@ index 000000000..607762f68
 +  }
 +}
 +
-+uint32_t read_dma_status(uintptr_t *dma_virtual_addr, enum dma_channel channel) {
++uint32_t read_dma_status(void *dma_virtual_addr, enum dma_channel channel) {
 +  if (channel == S2MM_CHANNEL) {
 +    return read_dma(dma_virtual_addr, S2MM_STATUS_REGISTER);
 +  } else {
@@ -91,16 +107,16 @@ index 000000000..607762f68
 +  }
 +}
 +
-+uint32_t set_transfer_mem_addr(uintptr_t *dma_virtual_addr, uint32_t phy_addr, enum dma_channel channel)
++uint32_t set_transfer_mem_addr(void *dma_virtual_addr, void *phy_addr, enum dma_channel channel)
 +{
 +  if (channel == S2MM_CHANNEL) {
-+    return write_dma(dma_virtual_addr, S2MM_DST_ADDRESS_REGISTER, dst_phy_addr);
++    return write_dma(dma_virtual_addr, S2MM_DST_ADDRESS_REGISTER, phy_addr);
 +  } else {
-+    return write_dma(dma_virtual_addr, MM2S_SRC_ADDRESS_REGISTER, src_phy_addr);
++    return write_dma(dma_virtual_addr, MM2S_SRC_ADDRESS_REGISTER, phy_addr);
 +  }
 +}
 +
-+TEE_Result dma_init(uintptr_t dma_base_addr, enum dma_channel channel)
++TEE_Result dma_init(void *dma_base_addr, enum dma_channel channel)
 +{
 +  register_phys_mem_pgdir(MEM_AREA_IO_SEC, dma_base_addr, DMA_SIZE);
 +  uintptr_t dma_virtual_addr = core_mmu_get_va(dma_base_addr, MEM_AREA_IO_SEC, DMA_SIZE);
@@ -115,7 +131,7 @@ index 000000000..607762f68
 +  return TEE_SUCCESS;
 +}
 +
-+TEE_Result dma_sync(uintptr_t dma_base_addr, enum dma_channel channel)
++TEE_Result dma_sync(void *dma_base_addr, enum dma_channel channel)
 +{
 +  uintptr_t dma_virtual_addr = core_mmu_get_va(dma_base_addr, MEM_AREA_IO_SEC, DMA_SIZE);
 +  uint64_t tref = timeout_init_us(DMA_DONE_TIMEOUT_USEC);
@@ -134,7 +150,7 @@ index 000000000..607762f68
 +  return TEE_ERROR_GENERIC;
 +}
 +
-+TEE_Result dma_transfer(uintptr_t dma_base_addr, uint32_t transfer_mem_addr, uint32_t length, 
++TEE_Result dma_transfer(void *dma_base_addr, void *transfer_mem_addr, uint32_t length, 
 +                        enum dma_channel channel)
 +{
 +  uintptr_t dma_virtual_addr = core_mmu_get_va(dma_base_addr, MEM_AREA_IO_SEC, DMA_SIZE);
@@ -150,7 +166,7 @@ index 000000000..607762f68
 +}
 diff --git a/core/include/drivers/zynqmp_dma.h b/core/include/drivers/zynqmp_dma.h
 new file mode 100644
-index 000000000..eb1b980cf
+index 000000000..fa65c6791
 --- /dev/null
 +++ b/core/include/drivers/zynqmp_dma.h
 @@ -0,0 +1,54 @@
@@ -202,9 +218,9 @@ index 000000000..eb1b980cf
 +#define DMA_SIZE                    0x10000
 +#define DMA_DONE_TIMEOUT_USEC       3000000
 +
-+TEE_Result dma_init(uintptr_t dma_base_addr, enum dma_channel channel);
-+TEE_Result dma_sync(uintptr_t dma_base_addr, enum dma_channel channel);
-+TEE_Result dma_transfer(uintptr_t dma_base_addr, uint32_t transfer_mem_addr, uint32_t length, 
++TEE_Result dma_init(void *dma_base_addr, enum dma_channel channel);
++TEE_Result dma_sync(void *dma_base_addr, enum dma_channel channel);
++TEE_Result dma_transfer(void *dma_base_addr, void *transfer_mem_addr, uint32_t length, 
 +                        enum dma_channel channel);
 +
 +#endif
@@ -222,7 +238,7 @@ index a20bc6c29..2e5b49059 100644
  subdirs-y += bcm
 diff --git a/core/pta/trusted_dma_pta.c b/core/pta/trusted_dma_pta.c
 new file mode 100644
-index 000000000..991a58121
+index 000000000..e3a69eb2c
 --- /dev/null
 +++ b/core/pta/trusted_dma_pta.c
 @@ -0,0 +1,86 @@
@@ -236,7 +252,7 @@ index 000000000..991a58121
 +
 +static TEE_Result pta_cmd_trusted_dma_init(uint32_t param_types, TEE_Param params [TEE_NUM_PARAMS])
 +{
-+  uintptr_t dma_base_addr;
++  void* dma_base_addr;
 +  enum dma_channel channel;
 +  const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_INPUT,
 +						TEE_PARAM_TYPE_VALUE_INPUT,
@@ -254,7 +270,7 @@ index 000000000..991a58121
 +
 +static TEE_Result pta_cmd_trusted_dma_sync(uint32_t param_types, TEE_Param params [TEE_NUM_PARAMS])
 +{
-+  uintptr_t dma_base_addr;
++  void* dma_base_addr;
 +  enum dma_channel channel;
 +  const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_INPUT,
 +						TEE_PARAM_TYPE_VALUE_INPUT,
@@ -272,8 +288,8 @@ index 000000000..991a58121
 +
 +static TEE_Result pta_cmd_trusted_dma_transfer(uint32_t param_types, TEE_Param params [TEE_NUM_PARAMS])
 +{
-+  uintptr_t dma_base_addr;
-+  uintptr_t transfer_mem_addr;
++  void* dma_base_addr;
++  void* transfer_mem_addr;
 +  uint32_t transfer_length;
 +  enum dma_channel channel;
 +  const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_INPUT,
