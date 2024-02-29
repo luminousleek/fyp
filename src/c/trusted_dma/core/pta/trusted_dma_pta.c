@@ -9,27 +9,41 @@
 
 static TEE_Result pta_cmd_trusted_dma_init(uint32_t param_types, TEE_Param params [TEE_NUM_PARAMS])
 {
-  void* dma_base_addr;
   enum dma_channel channel;
-  const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_INPUT,
-						TEE_PARAM_TYPE_VALUE_INPUT,
+  const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_VALUE_INPUT,
+						TEE_PARAM_TYPE_NONE,
 						TEE_PARAM_TYPE_NONE,
 						TEE_PARAM_TYPE_NONE);
 
   if (param_types != exp_pt)
     return TEE_ERROR_BAD_PARAMETERS;
 
-  dma_base_addr = params[0].memref.buffer;
-  channel = (params[1].value.a == 1) ? MM2S_CHANNEL : S2MM_CHANNEL;
+  channel = (params[0].value.a == 1) ? MM2S_CHANNEL : S2MM_CHANNEL;
 
-  return dma_init(dma_base_addr, channel);
+  return dma_init(channel);
 }
 
 static TEE_Result pta_cmd_trusted_dma_sync(uint32_t param_types, TEE_Param params [TEE_NUM_PARAMS])
 {
-  void* dma_base_addr;
   enum dma_channel channel;
-  const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_INPUT,
+  const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_VALUE_INPUT,
+						TEE_PARAM_TYPE_NONE,
+						TEE_PARAM_TYPE_NONE,
+						TEE_PARAM_TYPE_NONE);
+
+  if (param_types != exp_pt)
+    return TEE_ERROR_BAD_PARAMETERS;
+
+  channel = (params[0].value.a == 1) ? MM2S_CHANNEL : S2MM_CHANNEL;
+
+  return dma_sync(channel);
+}
+
+static TEE_Result pta_cmd_trusted_dma_transfer(uint32_t param_types, TEE_Param params [TEE_NUM_PARAMS])
+{
+  uint32_t transfer_length;
+  enum dma_channel channel;
+  const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_VALUE_INPUT,
 						TEE_PARAM_TYPE_VALUE_INPUT,
 						TEE_PARAM_TYPE_NONE,
 						TEE_PARAM_TYPE_NONE);
@@ -37,32 +51,10 @@ static TEE_Result pta_cmd_trusted_dma_sync(uint32_t param_types, TEE_Param param
   if (param_types != exp_pt)
     return TEE_ERROR_BAD_PARAMETERS;
 
-  dma_base_addr = params[0].memref.buffer;
+  transfer_length = params[0].value.a;
   channel = (params[1].value.a == 1) ? MM2S_CHANNEL : S2MM_CHANNEL;
 
-  return dma_sync(dma_base_addr, channel);
-}
-
-static TEE_Result pta_cmd_trusted_dma_transfer(uint32_t param_types, TEE_Param params [TEE_NUM_PARAMS])
-{
-  void* dma_base_addr;
-  void* transfer_mem_addr;
-  uint32_t transfer_length;
-  enum dma_channel channel;
-  const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_INPUT,
-						TEE_PARAM_TYPE_MEMREF_INPUT,
-						TEE_PARAM_TYPE_VALUE_INPUT,
-						TEE_PARAM_TYPE_NONE);
-
-  if (param_types != exp_pt)
-    return TEE_ERROR_BAD_PARAMETERS;
-
-  dma_base_addr = params[0].memref.buffer;
-  transfer_mem_addr = params[1].memref.buffer;
-  transfer_length = params[1].memref.size;
-  channel = (params[2].value.a == 1) ? MM2S_CHANNEL : S2MM_CHANNEL;
-
-  return dma_transfer(dma_base_addr, transfer_mem_addr, transfer_length, channel);
+  return dma_transfer(transfer_length, channel);
 }
 
 TEE_Result invoke_command(void *session __unused, uint32_t cmd_id,

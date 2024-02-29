@@ -46,9 +46,22 @@ enum dma_channel {
 #define DMA_SIZE                    0x10000
 #define DMA_DONE_TIMEOUT_USEC       3000000
 
-TEE_Result dma_init(void *dma_base_addr, enum dma_channel channel);
-TEE_Result dma_sync(void *dma_base_addr, enum dma_channel channel);
-TEE_Result dma_transfer(void *dma_base_addr, void *transfer_mem_addr, uint32_t length, 
-                        enum dma_channel channel);
+#define TRUSTED_DMA_BASE_ADDR       0xA0000000
+#define SRC_PHY_ADDR                0x40000000
+#define SECURE_MEM_PHY_ADDR         0x30000000
+
+uint32_t write_dma(void *virtual_addr, uint32_t offset, uint32_t value);
+uint32_t read_dma(void *virtual_addr, uint32_t offset);
+uint32_t reset_dma(void *dma_virtual_addr, enum dma_channel channel);
+uint32_t halt_dma(void *dma_virtual_addr, enum dma_channel channel);
+uint32_t enable_all_irq(void *dma_virtual_addr, enum dma_channel channel);
+uint32_t run_dma(void *dma_virtual_addr, enum dma_channel channel);
+uint32_t set_transfer_len(void *dma_virtual_addr, uint32_t length, enum dma_channel channel);
+uint32_t read_dma_status(void *dma_virtual_addr, enum dma_channel channel);
+uint32_t set_transfer_mem_addr(void *dma_virtual_addr, enum dma_channel channel);
+
+TEE_Result dma_init(enum dma_channel channel);
+TEE_Result dma_sync(enum dma_channel channel);
+TEE_Result dma_transfer(uint32_t length, enum dma_channel channel);
 
 #endif

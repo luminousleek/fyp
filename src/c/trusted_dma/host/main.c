@@ -19,13 +19,9 @@
 /* For the UUID (found in the TA's h-file(s)) */
 #include <trusted_dma_ta.h>
 
-#define NONCE_SIZE 32
-#define KEY_SIZE   1024
-#define SIG_SIZE   KEY_SIZE / 8
 #define TRUSTED_DMA_BASE_ADDR 0xA0000000
 #define SECURE_MEM_PHY_ADDR   0x30000000
-#define SRC_PHY_ADDR          0x0e000000
-#define DST_PHY_ADDR          0x0f000000
+#define SRC_PHY_ADDR          0x40000000
 
 static void teec_err(TEEC_Result res, uint32_t eo, const char *str)
 {
@@ -68,29 +64,26 @@ int main(int argc, char *argv[])
 
 	memset(&op, 0, sizeof(op));
   
-	op.paramTypes = TEEC_PARAM_TYPES(TEEC_MEMREF_TEMP_INPUT, 
-          TEEC_MEMREF_TEMP_INPUT,
-					TEEC_VALUE_INPUT,
+	op.paramTypes = TEEC_PARAM_TYPES(TEEC_VALUE_INPUT, 
+          TEEC_VALUE_INPUT,
+					TEEC_NONE,
           TEEC_NONE);
-  op.params[0].tmpref.buffer = TRUSTED_DMA_BASE_ADDR;
-  op.params[1].tmpref.buffer = SRC_PHY_ADDR;
-  op.params[1].tmpref.size = transfer_length;
-  op.params[2].value.a = 1;
+  op.params[0].value.a = transfer_length;
+  op.params[1].value.a = 1;
 
   printf("Transferring to MM2S channel.\n");
 	res = TEEC_InvokeCommand(&sess, TA_TRUSTED_DMA_CMD_TRANSFER, &op, &eo);
 	if (res)
 		teec_err(res, eo, "TEEC_InvokeCommand(TA_TRUSTED_DMA_CMD_TRANSFER)");
 
-  memset(&op, 0, sizeof(op));
-	op.paramTypes = TEEC_PARAM_TYPES(TEEC_MEMREF_TEMP_INPUT, 
-          TEEC_MEMREF_TEMP_INPUT,
-					TEEC_VALUE_INPUT,
+	memset(&op, 0, sizeof(op));
+  
+	op.paramTypes = TEEC_PARAM_TYPES(TEEC_VALUE_INPUT, 
+          TEEC_VALUE_INPUT,
+					TEEC_NONE,
           TEEC_NONE);
-  op.params[0].tmpref.buffer = TRUSTED_DMA_BASE_ADDR;
-  op.params[1].tmpref.buffer = DST_PHY_ADDR;
-  op.params[1].tmpref.size = transfer_length;
-  op.params[2].value.a = 0;
+  op.params[0].value.a = transfer_length;
+  op.params[1].value.a = 0;
 
   printf("Transferring to S2MM channel.\n");
   res = TEEC_InvokeCommand(&sess, TA_TRUSTED_DMA_CMD_TRANSFER, &op, &eo);
@@ -98,13 +91,12 @@ int main(int argc, char *argv[])
 		teec_err(res, eo, "TEEC_InvokeCommand(TA_TRUSTED_DMA_CMD_TRANSFER)");
 
   memset(&op, 0, sizeof(op));
-	op.paramTypes = TEEC_PARAM_TYPES(TEEC_MEMREF_TEMP_INPUT, 
-          TEEC_MEMREF_TEMP_OUTPUT,
+	op.paramTypes = TEEC_PARAM_TYPES(TEEC_MEMREF_TEMP_OUTPUT, 
+          TEEC_NONE,
 					TEEC_NONE,
           TEEC_NONE);
-  op.params[0].tmpref.buffer = DST_PHY_ADDR;
+  op.params[0].tmpref.buffer = (void *) result;
   op.params[0].tmpref.size = transfer_length;
-  op.params[1].tmpref.buffer = result;
 
   printf("Reading secure memory\n");
   res = TEEC_InvokeCommand(&sess, TA_TRUSTED_DMA_CMD_READ_DST, &op, &eo);

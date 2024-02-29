@@ -18,15 +18,13 @@
 
 
 /*
- * in params[0].memref dma_base_addr
- * in params[1].memref transfer_mem_addr
- * in params[2].value  1 if MM2S channel, 0 if S2MM channel
+ * in params[0].value transfer length
+ * in params[1].value 1 if MM2S channel, 0 if S2MM channel
  */
 #define TA_TRUSTED_DMA_CMD_TRANSFER 0
 
 /*
- * in params[0].memref  dst_mem_addr
- * out params[1].memref ns_output_buf
+ * out params[0].memref ns_output_buf
  */
 #define TA_TRUSTED_DMA_CMD_READ_DST 1
 
@@ -90,4 +88,4 @@ static const char *opteestrerr(unsigned err)
     }
 }
 
-#endif /* __NONCE_SIGN_TA_H */
+#endif /* __TRUSTED_DMA_TA_H */
