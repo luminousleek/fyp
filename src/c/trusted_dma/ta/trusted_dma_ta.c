@@ -44,7 +44,6 @@ static TEE_Result cmd_transfer(uint32_t param_types, TEE_Param params[TEE_NUM_PA
             TEE_PARAM_TYPE_NONE,
             TEE_PARAM_TYPE_NONE);
 
-  // TEE_MemFill(*pta_params, 0, sizeof(pta_params));
   pta_params[0].value.a = is_mm2s;
 
   DMSG("Initialising DMA with %s channel", channel_string);
@@ -75,9 +74,10 @@ static TEE_Result cmd_read_dst(uint32_t param_types, TEE_Param params[TEE_NUM_PA
 {
   TEE_Result res;
   uint32_t return_origin;
-  void *secure_mem_phy_addr = (void *) 0x30000000;
-  void *ns_mem_phy_addr = (void *) 0x50000000;
-  const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_VALUE_INPUT,
+  TEE_Param pta_params[TEE_NUM_PARAMS];
+  uint32_t pta_param_types;
+  uint32_t length;
+  const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_OUTPUT,
 						TEE_PARAM_TYPE_NONE,
 						TEE_PARAM_TYPE_NONE,
 						TEE_PARAM_TYPE_NONE);
@@ -85,8 +85,17 @@ static TEE_Result cmd_read_dst(uint32_t param_types, TEE_Param params[TEE_NUM_PA
   if (param_types != exp_pt)
     return TEE_ERROR_BAD_PARAMETERS;
 
-  DMSG("Moving %d bytes of memory from %p to %p", params[0].value.a, secure_mem_phy_addr, ns_mem_phy_addr);
-  TEE_MemMove(ns_mem_phy_addr, secure_mem_phy_addr, params[0].value.a);
+  length = params[0].memref.size;
+
+  pta_param_types = TEE_PARAM_TYPES(TEE_PARAM_TYPE_VALUE_INPUT,
+            TEE_PARAM_TYPE_MEMREF_OUTPUT,
+            TEE_PARAM_TYPE_NONE,
+            TEE_PARAM_TYPE_NONE);
+
+  pta_params[0].value.a = length;
+
+  DMSG("Moving %d bytes of memory from %p to %p", length, pta_params[1].memref, params[0].memref);
+  TEE_MemMove(params[0].memref, pta_params[1].memref, length);
   return TEE_SUCCESS;
 }
 

@@ -4,6 +4,7 @@
 #include <mm/core_memprot.h>
 
 register_ddr(SRC_PHY_ADDR, DMA_SIZE);
+register_phys_mem(MEM_AREA_TEE_RAM, SECURE_MEM_PHY_ADDR, DMA_SIZE);
 register_phys_mem_pgdir(MEM_AREA_IO_SEC, TRUSTED_DMA_BASE_ADDR, DMA_SIZE);
 
 uint32_t write_dma(void *virtual_addr, uint32_t offset, uint32_t value)
