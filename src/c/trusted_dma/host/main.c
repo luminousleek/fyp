@@ -93,25 +93,25 @@ int main(int argc, char *argv[])
 	if (res)
 		teec_err(res, eo, "TEEC_InvokeCommand(TA_TRUSTED_DMA_CMD_TRANSFER)");
 
-  memset(&op, 0, sizeof(op));
-	op.paramTypes = TEEC_PARAM_TYPES(TEEC_MEMREF_TEMP_OUTPUT, 
-          TEEC_NONE,
-					TEEC_NONE,
-          TEEC_NONE);
+  // memset(&op, 0, sizeof(op));
+	// op.paramTypes = TEEC_PARAM_TYPES(TEEC_MEMREF_TEMP_OUTPUT, 
+  //         TEEC_NONE,
+	// 				TEEC_NONE,
+  //         TEEC_NONE);
 
-  op.params[0].tmpref.buffer = result;
-  op.params[0].tmpref.size = transfer_length;
+  // op.params[0].tmpref.buffer = result;
+  // op.params[0].tmpref.size = transfer_length;
 
-  printf("Reading secure memory\n");
-  res = TEEC_InvokeCommand(&sess, TA_TRUSTED_DMA_CMD_READ_DST, &op, &eo);
-	if (res)
-		teec_err(res, eo, "TEEC_InvokeCommand(TA_TRUSTED_DMA_CMD_READ_DST)");
+  // printf("Reading secure memory\n");
+  // res = TEEC_InvokeCommand(&sess, TA_TRUSTED_DMA_CMD_READ_DST, &op, &eo);
+	// if (res)
+	// 	teec_err(res, eo, "TEEC_InvokeCommand(TA_TRUSTED_DMA_CMD_READ_DST)");
 
 	printf("Result: ");
 	for (n = 0; n < transfer_length; n++)
-		printf("%02x ", ((uint8_t *) result)[n]);
+		printf("%02x ", ((uint8_t *) virtual_dst_addr)[n]);
 	printf("\n");
-  printf("%s", result);
+  printf("%s", virtual_dst_addr);
 
 	return 0;
 }

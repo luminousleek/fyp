@@ -95,7 +95,7 @@ static TEE_Result cmd_read_dst(uint32_t param_types, TEE_Param params[TEE_NUM_PA
   pta_params[0].value.a = length;
 
   DMSG("Moving %d bytes of memory from %p to %p", length, pta_params[1].memref, params[0].memref);
-  TEE_MemMove(params[0].memref, pta_params[1].memref, length);
+  TEE_MemMove(params[0].memref.buffer, pta_params[1].memref.buffer, length);
   return TEE_SUCCESS;
 }
 

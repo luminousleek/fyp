@@ -49,6 +49,7 @@ enum dma_channel {
 #define TRUSTED_DMA_BASE_ADDR       0xA0000000
 #define SRC_PHY_ADDR                0x40000000
 #define SECURE_MEM_PHY_ADDR         0x30000000
+#define DST_PHY_ADDR                0x50000000
 
 uint32_t write_dma(void *virtual_addr, uint32_t offset, uint32_t value);
 uint32_t read_dma(void *virtual_addr, uint32_t offset);

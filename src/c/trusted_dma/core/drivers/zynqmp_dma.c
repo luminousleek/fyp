@@ -4,7 +4,6 @@
 #include <mm/core_memprot.h>
 
 register_ddr(SRC_PHY_ADDR, DMA_SIZE);
-register_phys_mem(MEM_AREA_TEE_RAM, SECURE_MEM_PHY_ADDR, DMA_SIZE);
 register_phys_mem_pgdir(MEM_AREA_IO_SEC, TRUSTED_DMA_BASE_ADDR, DMA_SIZE);
 
 uint32_t write_dma(void *virtual_addr, uint32_t offset, uint32_t value)
@@ -78,7 +77,7 @@ uint32_t read_dma_status(void *dma_virtual_addr, enum dma_channel channel)
 uint32_t set_transfer_mem_addr(void *dma_virtual_addr, enum dma_channel channel)
 {
   if (channel == S2MM_CHANNEL) {
-    return write_dma(dma_virtual_addr, S2MM_DST_ADDRESS_REGISTER, SECURE_MEM_PHY_ADDR);
+    return write_dma(dma_virtual_addr, S2MM_DST_ADDRESS_REGISTER, DST_PHY_ADDR);
   } else {
     return write_dma(dma_virtual_addr, MM2S_SRC_ADDRESS_REGISTER, SRC_PHY_ADDR);
   }
