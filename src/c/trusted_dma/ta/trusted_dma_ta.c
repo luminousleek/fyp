@@ -39,7 +39,7 @@ static TEE_Result cmd_transfer(uint32_t param_types, TEE_Param params[TEE_NUM_PA
     channel_string = "S2MM";
   }
 
-  pta_param_types = TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_OUTPUT,
+  pta_param_types = TEE_PARAM_TYPES(TEE_PARAM_TYPE_VALUE_INPUT,
             TEE_PARAM_TYPE_NONE,
             TEE_PARAM_TYPE_NONE,
             TEE_PARAM_TYPE_NONE);
