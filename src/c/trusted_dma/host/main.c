@@ -22,6 +22,7 @@
 #define TRUSTED_DMA_BASE_ADDR 0xA0000000
 #define SECURE_MEM_PHY_ADDR   0x30000000
 #define SRC_PHY_ADDR          0x40000000
+#define DST_PHY_ADDR          0x50000000
 
 static void teec_err(TEEC_Result res, uint32_t eo, const char *str)
 {
@@ -56,8 +57,10 @@ int main(int argc, char *argv[])
   printf("Opening a character device file of the ZynqMP's DDR memory...\n");
 	int ddr_memory = open("/dev/mem", O_RDWR | O_SYNC);
 
-  printf("Memory map the MM2S source address for key register block.\n");
+  printf("Memory map the MM2S source address for register block.\n");
     unsigned int *virtual_src_addr  = mmap(NULL, 65535, PROT_READ | PROT_WRITE, MAP_SHARED, ddr_memory, SRC_PHY_ADDR);
+  printf("Memory map the S2MM source address for register block.\n");
+    unsigned int *virtual_dst_addr  = mmap(NULL, 65535, PROT_READ | PROT_WRITE, MAP_SHARED, ddr_memory, DST_PHY_ADDR);
 
   printf("Copy payload to virtual source address.\n");
   memcpy(virtual_src_addr, payload, transfer_length);
@@ -95,7 +98,7 @@ int main(int argc, char *argv[])
           TEEC_NONE,
 					TEEC_NONE,
           TEEC_NONE);
-  op.params[0].tmpref.buffer = (void *) result;
+  op.params[0].tmpref.buffer = (void *) DST_PHY_ADDR;
   op.params[0].tmpref.size = transfer_length;
 
   printf("Reading secure memory\n");
@@ -104,10 +107,10 @@ int main(int argc, char *argv[])
 		teec_err(res, eo, "TEEC_InvokeCommand(TA_TRUSTED_DMA_CMD_READ_DST)");
 
 	printf("Result: ");
-	for (n = 0; n < op.params[0].tmpref.size; n++)
-		printf("%02x ", ((uint8_t *)op.params[1].tmpref.buffer)[n]);
+	for (n = 0; n < transfer_length; n++)
+		printf("%02x ", ((uint8_t *) virtual_dst_addr)[n]);
 	printf("\n");
-  printf("%s", result);
+  printf("%s", virtual_dst_addr);
 
 	return 0;
 }
