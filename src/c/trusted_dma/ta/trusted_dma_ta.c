@@ -76,7 +76,8 @@ static TEE_Result cmd_read_dst(uint32_t param_types, TEE_Param params[TEE_NUM_PA
   TEE_Result res;
   uint32_t return_origin;
   void *secure_mem_phy_addr = (void *) 0x30000000;
-  const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_OUTPUT,
+  void *ns_mem_phy_addr = (void *) 0x50000000;
+  const uint32_t exp_pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_VALUE_INPUT,
 						TEE_PARAM_TYPE_NONE,
 						TEE_PARAM_TYPE_NONE,
 						TEE_PARAM_TYPE_NONE);
@@ -84,8 +85,8 @@ static TEE_Result cmd_read_dst(uint32_t param_types, TEE_Param params[TEE_NUM_PA
   if (param_types != exp_pt)
     return TEE_ERROR_BAD_PARAMETERS;
 
-  DMSG("Moving %d bytes of memory from %p to %p", params[0].memref.size, secure_mem_phy_addr, params[0].memref.buffer);
-  TEE_MemMove(params[0].memref.buffer, secure_mem_phy_addr, params[0].memref.size);
+  DMSG("Moving %d bytes of memory from %p to %p", params[0].value.a, secure_mem_phy_addr, ns_mem_phy_addr);
+  TEE_MemMove(ns_mem_phy_addr, secure_mem_phy_addr, params[0].value.a);
   return TEE_SUCCESS;
 }
 

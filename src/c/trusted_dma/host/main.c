@@ -94,12 +94,12 @@ int main(int argc, char *argv[])
 		teec_err(res, eo, "TEEC_InvokeCommand(TA_TRUSTED_DMA_CMD_TRANSFER)");
 
   memset(&op, 0, sizeof(op));
-	op.paramTypes = TEEC_PARAM_TYPES(TEEC_MEMREF_TEMP_OUTPUT, 
+	op.paramTypes = TEEC_PARAM_TYPES(TEEC_VALUE_INPUT, 
           TEEC_NONE,
 					TEEC_NONE,
           TEEC_NONE);
-  op.params[0].tmpref.buffer = (void *) DST_PHY_ADDR;
-  op.params[0].tmpref.size = transfer_length;
+
+  op.params[0].value.a = transfer_length;
 
   printf("Reading secure memory\n");
   res = TEEC_InvokeCommand(&sess, TA_TRUSTED_DMA_CMD_READ_DST, &op, &eo);
