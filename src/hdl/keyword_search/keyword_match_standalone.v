@@ -15,8 +15,8 @@ module keyword_match_standalone
   input  wire        s_axis_text_tuser,
 
   // outputs for access control
-  output wire        allow_sig,
-  output wire        deny_sig,
+  output wire        match_sig,
+  output wire        no_match_sig,
   input  wire        ack
 );
 
@@ -38,8 +38,8 @@ module keyword_match_standalone
   reg [127:0] reversed_kw;
   reg [4:0] bytes_matched_reg = 5'd0, bytes_matched_next;
 
-  reg allow_sig_reg = 1'b0, allow_sig_next;
-  reg deny_sig_reg = 1'b0, deny_sig_next;
+  reg match_sig_reg = 1'b0, match_sig_next;
+  reg no_match_sig_reg = 1'b0, no_match_sig_next;
 
   reg [63:0] lower_data;
 
@@ -47,8 +47,8 @@ module keyword_match_standalone
 
   // wires
   assign s_axis_text_tready = s_axis_text_tready_reg;
-  assign allow_sig = allow_sig_reg;
-  assign deny_sig = deny_sig_reg;
+  assign match_sig = match_sig_reg;
+  assign no_match_sig = no_match_sig_reg;
 
   // functions
   function [4:0] get_kw_len;
@@ -129,15 +129,6 @@ module keyword_match_standalone
     integer i;
     reg match;
     middle_bytes_match = data == kw[bytes_matched * 8 +: 64];
-    // begin
-    //   i = 0;
-    //   match = 1'b1;
-    //   while (i < 8 && match) begin
-    //     match = data[i * 8 +: 8] == kw[(bytes_matched + i) * 8 +: 8];
-    //     i = i + 1;
-    //   end
-    //   middle_bytes_match = match;
-    // end
   endfunction
 
   function last_bytes_match;
@@ -164,8 +155,8 @@ module keyword_match_standalone
     s_axis_text_tready_next = 1'b0;
 
     bytes_matched_next = bytes_matched_reg;
-    allow_sig_next = allow_sig_reg;
-    deny_sig_next = deny_sig_reg;
+    match_sig_next = match_sig_reg;
+    no_match_sig_next = no_match_sig_reg;
 
     case (state_reg)
       STATE_IDLE: begin
@@ -174,8 +165,8 @@ module keyword_match_standalone
           bytes_matched_next = 5'd0;
           keyword_length = get_kw_len(keyword);
           reversed_kw = reverse_kw(keyword);
-          allow_sig_next = 1'b0;
-          deny_sig_next = 1'b0;
+          match_sig_next = 1'b0;
+          no_match_sig_next = 1'b0;
           state_next = STATE_MATCHING;
         end else begin
           state_next = STATE_IDLE;
@@ -189,13 +180,13 @@ module keyword_match_standalone
             if (keyword_length - bytes_matched_reg <= 8) begin // end of keyword in this data word
               if (last_bytes_match(lower_data, reversed_kw, keyword_length, bytes_matched_reg)) begin
                 bytes_matched_next = 5'd0;
-                deny_sig_next = 1'b1;
+                match_sig_next = 1'b1;
                 state_next = STATE_MATCH_FOUND;
               end else begin
                 bytes_matched_next = find_first_matched_bytes(lower_data, reversed_kw, keyword_length);
                 if (bytes_matched_next == keyword_length) begin
                   bytes_matched_next = 5'd0;
-                  deny_sig_next = 1'b1;
+                  match_sig_next = 1'b1;
                   state_next = STATE_MATCH_FOUND;
                 end else begin
                   state_next = STATE_MATCHING;
@@ -214,7 +205,7 @@ module keyword_match_standalone
             bytes_matched_next = find_first_matched_bytes(lower_data, reversed_kw, keyword_length);
             if (bytes_matched_next == keyword_length) begin
               bytes_matched_next = 5'd0;
-              deny_sig_next = 1'b1;
+              match_sig_next = 1'b1;
               state_next = STATE_MATCH_FOUND;
             end else begin
               state_next = STATE_MATCHING;
@@ -222,7 +213,7 @@ module keyword_match_standalone
           end
           if (s_axis_text_tlast && state_next != STATE_MATCH_FOUND) begin
             s_axis_text_tready_next = 1'b0;
-            allow_sig_next = 1'b1;
+            no_match_sig_next = 1'b1;
             state_next = STATE_NO_MATCH;
           end
         end else begin
@@ -232,13 +223,13 @@ module keyword_match_standalone
       end
       STATE_MATCH_FOUND: begin // discard incoming data until tlast is asserted
         if (ack) begin
-          deny_sig_next = 1'b0;
+          match_sig_next = 1'b0;
         end else begin
-          deny_sig_next = deny_sig_reg;
+          match_sig_next = match_sig_reg;
         end
         if (s_axis_text_tlast) begin
           s_axis_text_tready_next = 1'b0;
-          deny_sig_next = 1'b0;
+          match_sig_next = 1'b0;
           state_next = STATE_IDLE;
         end else begin
           s_axis_text_tready_next = 1'b1;
@@ -247,7 +238,7 @@ module keyword_match_standalone
       end
       STATE_NO_MATCH: begin
         if (ack) begin
-          allow_sig_next = 1'b0;
+          no_match_sig_next = 1'b0;
           state_next = STATE_IDLE;
         end else begin
           state_next = STATE_NO_MATCH;
@@ -265,14 +256,14 @@ module keyword_match_standalone
       state_reg <= STATE_IDLE;
       s_axis_text_tready_reg <= 1'b0;
       bytes_matched_reg <= 5'd0;
-      allow_sig_reg <= 1'b0;
-      deny_sig_reg <= 1'b0;
+      match_sig_reg <= 1'b0;
+      no_match_sig_reg <= 1'b0;
     end else begin
       state_reg <= state_next;
       s_axis_text_tready_reg <= s_axis_text_tready_next;
       bytes_matched_reg <= bytes_matched_next;
-      allow_sig_reg <= allow_sig_next;
-      deny_sig_reg <= deny_sig_next;
+      match_sig_reg <= match_sig_next;
+      no_match_sig_reg <= no_match_sig_next;
     end
   end
 

@@ -15,8 +15,8 @@ module keyword_match_parallel_top
   input  wire        s_axis_text_tuser,
 
   // outputs for access control
-  output wire        allow_sig,
-  output wire        deny_sig,
+  output wire        match_sig,
+  output wire        no_match_sig,
   input  wire        ack
 );
 
@@ -35,8 +35,8 @@ module keyword_match_parallel_top
   reg [1:0] state_reg = STATE_IDLE, state_next;
 
   // datapath control signals
-  reg allow_sig_out_reg = 1'b0, allow_sig_out_next;
-  reg deny_sig_out_reg = 1'b0, deny_sig_out_next;
+  reg match_sig_out_reg = 1'b0, match_sig_out_next;
+  reg no_match_sig_out_reg = 1'b0, no_match_sig_out_next;
   reg ack_0_reg = 1'b0, ack_0_next;
   reg ack_1_reg = 1'b0, ack_1_next;
   reg ack_2_reg = 1'b0, ack_2_next;
@@ -44,14 +44,14 @@ module keyword_match_parallel_top
 
   reg last_reg = 1'b0, last_next;
 
-  wire allow_0;
-  wire allow_1;
-  wire allow_2;
-  wire allow_3;
-  wire deny_0;
-  wire deny_1;
-  wire deny_2;
-  wire deny_3;
+  wire match_0;
+  wire match_1;
+  wire match_2;
+  wire match_3;
+  wire no_match_0;
+  wire no_match_1;
+  wire no_match_2;
+  wire no_match_3;
   wire ack_0;
   wire ack_1;
   wire ack_2;
@@ -65,8 +65,8 @@ module keyword_match_parallel_top
 
   // wires
   assign s_axis_text_tready = s_axis_text_tready_reg;
-  assign allow_sig = allow_sig_out_reg;
-  assign deny_sig = deny_sig_out_reg;
+  assign match_sig = match_sig_out_reg;
+  assign no_match_sig = no_match_sig_out_reg;
   assign ack_0 = ack_0_reg;
   assign ack_1 = ack_1_reg;
   assign ack_2 = ack_2_reg;
@@ -86,8 +86,8 @@ module keyword_match_parallel_top
     .s_axis_text_tlast(s_axis_text_tlast),
     .s_axis_text_tuser(s_axis_text_tuser),
 
-    .allow_sig(allow_0),
-    .deny_sig(deny_0),
+    .match_sig(match_0),
+    .no_match_sig(no_match_0),
     .ack(ack_0)
   );
 
@@ -104,8 +104,8 @@ module keyword_match_parallel_top
     .s_axis_text_tlast(s_axis_text_tlast),
     .s_axis_text_tuser(s_axis_text_tuser),
 
-    .allow_sig(allow_1),
-    .deny_sig(deny_1),
+    .match_sig(match_1),
+    .no_match_sig(no_match_1),
     .ack(ack_1)
   );
 
@@ -122,8 +122,8 @@ module keyword_match_parallel_top
     .s_axis_text_tlast(s_axis_text_tlast),
     .s_axis_text_tuser(s_axis_text_tuser),
 
-    .allow_sig(allow_2),
-    .deny_sig(deny_2),
+    .match_sig(match_2),
+    .no_match_sig(no_match_2),
     .ack(ack_2)
   );
 
@@ -140,8 +140,8 @@ module keyword_match_parallel_top
     .s_axis_text_tlast(s_axis_text_tlast),
     .s_axis_text_tuser(s_axis_text_tuser),
 
-    .allow_sig(allow_3),
-    .deny_sig(deny_3),
+    .match_sig(match_3),
+    .no_match_sig(no_match_3),
     .ack(ack_3)
   );
 
@@ -152,8 +152,8 @@ module keyword_match_parallel_top
                             & s_axis_tready_2 & s_axis_tready_3;
 
     last_next = last_reg;
-    allow_sig_out_next = allow_sig_out_reg;
-    deny_sig_out_next = deny_sig_out_reg;
+    match_sig_out_next = match_sig_out_reg;
+    no_match_sig_out_next = no_match_sig_out_reg;
     ack_0_next = ack_0_reg;
     ack_1_next = ack_1_reg;
     ack_2_next = ack_2_reg;
@@ -165,8 +165,8 @@ module keyword_match_parallel_top
         ack_1_next = 1'b0;
         ack_2_next = 1'b0;
         ack_3_next = 1'b0;
-        allow_sig_out_next = 1'b0;
-        deny_sig_out_next = 1'b0;
+        match_sig_out_next = 1'b0;
+        no_match_sig_out_next = 1'b0;
         last_next = last_reg;
         if (s_axis_text_tvalid) begin
           state_next = STATE_MATCHING;
@@ -180,15 +180,15 @@ module keyword_match_parallel_top
         end else begin
           last_next = 1'b0;
         end
-        if (deny_0 || deny_1 || deny_2 || deny_3) begin
-          deny_sig_out_next = 1'b1;
+        if (match_0 || match_1 || match_2 || match_3) begin
+          match_sig_out_next = 1'b1;
           ack_0_next = 1'b1;
           ack_1_next = 1'b1;
           ack_2_next = 1'b1;
           ack_3_next = 1'b1;
           state_next = STATE_MATCH_FOUND;
-        end else if (allow_0 && allow_1 && allow_2 && allow_3) begin
-          allow_sig_out_next = 1'b1;
+        end else if (no_match_0 && no_match_1 && no_match_2 && no_match_3) begin
+          no_match_sig_out_next = 1'b1;
           ack_0_next = 1'b1;
           ack_1_next = 1'b1;
           ack_2_next = 1'b1;
@@ -201,9 +201,9 @@ module keyword_match_parallel_top
       end
       STATE_MATCH_FOUND: begin
         if (ack) begin
-          deny_sig_out_next = 1'b0;
+          match_sig_out_next = 1'b0;
         end else begin
-          deny_sig_out_next = deny_sig_out_next;
+          match_sig_out_next = match_sig_out_next;
         end
         if (s_axis_text_tlast || last_reg) begin
           s_axis_text_tready_next = 1'b0;
@@ -215,7 +215,7 @@ module keyword_match_parallel_top
       end
       STATE_NO_MATCH: begin
         if (ack) begin
-          allow_sig_out_next = 1'b0;
+          no_match_sig_out_next = 1'b0;
           ack_0_next = 1'b0;
           ack_1_next = 1'b0;
           ack_2_next = 1'b0;
@@ -234,8 +234,8 @@ module keyword_match_parallel_top
       state_reg <= STATE_IDLE;
       s_axis_text_tready_reg <= 1'b0;
       last_reg <= 1'b0;
-      allow_sig_out_reg <= 1'b0;
-      deny_sig_out_reg <= 1'b0;
+      match_sig_out_reg <= 1'b0;
+      no_match_sig_out_reg <= 1'b0;
       ack_0_reg <= 1'b0;
       ack_1_reg <= 1'b0;
       ack_2_reg <= 1'b0;
@@ -244,8 +244,8 @@ module keyword_match_parallel_top
       state_reg <= state_next;
       s_axis_text_tready_reg <= s_axis_text_tready_next;
       last_reg <= last_next;
-      allow_sig_out_reg <= allow_sig_out_next;
-      deny_sig_out_reg <= deny_sig_out_next;
+      match_sig_out_reg <= match_sig_out_next;
+      no_match_sig_out_reg <= no_match_sig_out_next;
       ack_0_reg <= ack_0_next;
       ack_1_reg <= ack_1_next;
       ack_2_reg <= ack_2_next;
